@@ -1,0 +1,31 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Node / React
+node_modules/
+dist/
+.vite/
+
+# Gradle / Android
+.gradle/
+build/
+local.properties
+*.apk
+*.aab
+.externalNativeBuild/
+.cxx/
+captures/
+.idea/caches/
+.idea/workspace.xml
+
+# OS / editors
+.DS_Store
+*.log
