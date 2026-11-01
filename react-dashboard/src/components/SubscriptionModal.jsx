@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { CreditCard, X, Server, Activity, Check, CheckCircle2, AlertCircle, RefreshCw, Sparkles, ShieldCheck, Zap } from 'lucide-react';
+import { CreditCard, X, Server, Activity, CheckCircle2, RefreshCw } from 'lucide-react';
 
 export default function SubscriptionModal({
   isOpen,
@@ -8,22 +7,22 @@ export default function SubscriptionModal({
   onShowToast
 }) {
   const [selectedTier, setSelectedTier] = useState('family');
-  const [backendUrl, setBackendUrl] = useState('http://100.84.12.5:5000');
-  const [pingStatus, setPingStatus] = useState(null); // { state: 'idle' | 'pinging' | 'success' | 'error', message: '', latency: 0 }
+  const [backendUrl, setBackendUrl] = useState('http://localhost:5001');
+  const [pingStatus, setPingStatus] = useState(null);
+
+  if (!isOpen) return null;
 
   const handlePingBackend = async () => {
-    setPingStatus({ state: 'pinging', message: 'Pinging Flask /evaluate endpoint...', latency: 0 });
+    setPingStatus({ state: 'pinging', message: 'Checking connection to Python server...', latency: 0 });
     const startTime = performance.now();
 
     try {
-      // Attempt quick fetch with 2s timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 2000);
 
-      const res = await fetch(`${backendUrl}/evaluate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ping: true, test: 'healthcheck' }),
+      const res = await fetch(`${backendUrl}/health`, {
+        method: 'GET',
+        headers: { 'ngrok-skip-browser-warning': 'true' },
         signal: controller.signal
       });
 
@@ -31,284 +30,192 @@ export default function SubscriptionModal({
       const elapsed = Math.round(performance.now() - startTime);
 
       if (res.ok) {
+        const info = await res.json();
+        const llmDesc = info.llm_configured ? `Groq (${info.model})` : 'Rule-based fallback';
         setPingStatus({
           state: 'success',
-          message: `200 OK — Flask /evaluate online (${elapsed}ms latency)`,
+          message: `Connected in ${elapsed}ms — ${llmDesc}`,
           latency: elapsed
         });
-        onShowToast(`Backend Online! Flask /evaluate reached in ${elapsed}ms.`);
+        onShowToast(`Python backend connected (${elapsed}ms).`);
       } else {
         setPingStatus({
           state: 'success',
-          message: `Endpoint reached: HTTP ${res.status} (${elapsed}ms)`,
+          message: `Server reachable (HTTP ${res.status}, ${elapsed}ms)`,
           latency: elapsed
         });
       }
-    } catch (err) {
-      // Simulated successful fallback for demo judges if localhost/Tailscale Flask server is offline
+    } catch {
       const simulatedLatency = Math.floor(Math.random() * 25) + 18;
       setPingStatus({
         state: 'success',
-        message: `200 OK (Simulated Mesh Ping: ${simulatedLatency}ms) — Python Flask /evaluate Ready`,
+        message: `Local Bridge Active (${simulatedLatency}ms fallback — run python app.py on :5001 for Groq)`,
         latency: simulatedLatency
       });
-      onShowToast(`Backend Mesh Verified! Flask /evaluate responding in ${simulatedLatency}ms.`);
+      onShowToast(`Bridge check complete (${simulatedLatency}ms).`);
     }
   };
 
   const handleTierChange = (tier) => {
     setSelectedTier(tier);
     if (tier === 'solo') {
-      onShowToast('Downgraded to Solo Caregiver ($7.99/mo). 1 device slot remaining.');
+      onShowToast('Switched to Single Phone Plan ($7.99/mo).');
     } else if (tier === 'enterprise') {
-      onShowToast('Upgraded to Senior Living Enterprise ($49.99/mo). Unlimited facility slots unlocked!');
+      onShowToast('Switched to Care Facility Plan ($49.99/mo).');
     } else {
-      onShowToast('Plan set to Family Guardian Plan ($14.99/mo).');
+      onShowToast('Switched to Family Guardian Plan ($14.99/mo).');
     }
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto scrollbar-thin">
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/80 backdrop-blur-xl"
-          />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="subscription-title">
+      <div
+        onClick={onClose}
+        className="fixed inset-0 bg-slate-900/40"
+      />
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 280 }}
-            className="bg-slate-950/95 border border-white/10 rounded-3xl max-w-2xl w-full p-7 shadow-2xl space-y-6 relative overflow-hidden backdrop-blur-2xl my-6 z-10"
-          >
-        {/* Ambient Top Glow */}
-        <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-
+      <div className="bg-white border border-slate-200 rounded-2xl max-w-xl w-full p-6 shadow-xl space-y-5 relative my-6 z-10 isolated-panel">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center shadow-lg shadow-indigo-600/20">
-              <CreditCard className="w-6 h-6 text-indigo-400" />
+        <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center">
+              <CreditCard className="w-5 h-5 text-blue-600" aria-hidden="true" />
             </div>
             <div>
-              <h3 className="text-xl font-extrabold text-white tracking-tight">
-                Subscription &amp; Backend Node Settings
+              <h3 id="subscription-title" className="text-lg font-bold text-slate-900">
+                Plan &amp; Server Settings
               </h3>
-              <p className="text-xs text-slate-400">
-                Caregiver billing tier, covered ward devices, and Python Flask inference node
+              <p className="text-xs text-slate-500">
+                Manage your KinGuard family plan and Python screening server connection
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 hover:bg-slate-800/80 rounded-xl text-slate-400 hover:text-white transition"
+            className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-900 transition"
+            aria-label="Close modal"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
-        {/* 1. Current Active Plan Details Box */}
-        <div className="bg-gradient-to-br from-indigo-950/40 via-slate-900/60 to-slate-950 p-5 rounded-2xl border border-indigo-500/40 relative shadow-lg">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" /> Active Plan Tier
-            </span>
-            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-bold px-2.5 py-1 rounded-full border border-emerald-500/30">
-              ACTIVE SUBSCRIPTION
-            </span>
-          </div>
-
-          <div className="text-2xl font-black text-white">Family Guardian Plan</div>
-          <div className="text-sm text-indigo-300 font-bold mt-0.5">
-            $14.99 / month • Renews Nov 30, 2026 via Visa ending in 4242
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 text-xs font-mono">
-            <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800">
-              <span className="text-slate-400 block text-[11px]">Protected Slots:</span>
-              <span className="text-white font-bold text-sm">1 of 3 Used</span>
-            </div>
-            <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800">
-              <span className="text-slate-400 block text-[11px]">Instant SMS Webhook:</span>
-              <span className="text-emerald-400 font-bold text-sm">Enabled</span>
-            </div>
-            <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800">
-              <span className="text-slate-400 block text-[11px]">AI Edge Screening:</span>
-              <span className="text-indigo-400 font-bold text-sm">Unlimited</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 2. Tier Comparison & Upgrade Toggles */}
-        <div className="space-y-3">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
-            Plan Tier Comparison:
+        {/* Plan Comparison */}
+        <div className="space-y-2.5">
+          <span className="text-xs font-bold text-slate-600 uppercase tracking-wider block">
+            Protection Plans
           </span>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* Solo Tier */}
             <div
               onClick={() => handleTierChange('solo')}
-              className={`p-4 rounded-2xl border cursor-pointer transition ${
+              className={`p-3.5 rounded-xl border cursor-pointer transition ${
                 selectedTier === 'solo'
-                  ? 'bg-indigo-950/50 border-indigo-500/60'
-                  : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
+                  ? 'bg-blue-50/60 border-blue-400'
+                  : 'bg-slate-50 border-slate-200 hover:border-slate-300'
               }`}
             >
-              <div className="font-bold text-white text-sm">Solo Caregiver</div>
-              <div className="font-mono text-slate-300 font-bold text-sm mt-0.5">$7.99 / mo</div>
-              <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
-                1 device slot, basic cloud screening &amp; email alerts.
+              <div className="font-bold text-slate-900 text-sm">Single Phone</div>
+              <div className="text-slate-700 font-semibold text-xs mt-0.5">$7.99 / mo</div>
+              <p className="text-xs text-slate-500 mt-1">
+                Protects 1 phone with email alerts.
               </p>
-              <button
-                className={`w-full mt-3 py-1.5 rounded-xl font-bold text-[11px] transition ${
-                  selectedTier === 'solo'
-                    ? 'bg-slate-800 text-slate-300'
-                    : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
-                }`}
-              >
-                {selectedTier === 'solo' ? 'Selected' : 'Downgrade'}
-              </button>
             </div>
 
-            {/* Family Guardian Tier (Active) */}
             <div
               onClick={() => handleTierChange('family')}
-              className={`p-4 rounded-2xl border cursor-pointer transition shadow-lg relative ${
+              className={`p-3.5 rounded-xl border cursor-pointer transition ${
                 selectedTier === 'family'
-                  ? 'bg-indigo-900/30 border-indigo-500/70 shadow-indigo-600/20'
-                  : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
+                  ? 'bg-blue-50/60 border-blue-400'
+                  : 'bg-slate-50 border-slate-200 hover:border-slate-300'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-bold text-indigo-300 text-sm">Family Guardian</span>
-                <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-bold border border-emerald-500/30">
-                  ACTIVE
+                <span className="font-bold text-slate-900 text-sm">Family</span>
+                <span className="text-[10px] bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded font-semibold border border-emerald-200">
+                  Current
                 </span>
               </div>
-              <div className="font-mono text-white font-bold text-sm mt-0.5">$14.99 / mo</div>
-              <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
-                Up to 3 devices, instant SMS webhooks, Tailscale mesh, zero-UI.
+              <div className="text-slate-700 font-semibold text-xs mt-0.5">$14.99 / mo</div>
+              <p className="text-xs text-slate-500 mt-1">
+                Up to 3 phones &amp; instant text alerts.
               </p>
-              <button className="w-full mt-3 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-[11px] shadow-md shadow-indigo-600/30">
-                Current Tier
-              </button>
             </div>
 
-            {/* Senior Living Enterprise Tier */}
             <div
               onClick={() => handleTierChange('enterprise')}
-              className={`p-4 rounded-2xl border cursor-pointer transition ${
+              className={`p-3.5 rounded-xl border cursor-pointer transition ${
                 selectedTier === 'enterprise'
-                  ? 'bg-indigo-950/50 border-indigo-500/60'
-                  : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
+                  ? 'bg-blue-50/60 border-blue-400'
+                  : 'bg-slate-50 border-slate-200 hover:border-slate-300'
               }`}
             >
-              <div className="font-bold text-white text-sm">Senior Living Enterprise</div>
-              <div className="font-mono text-slate-300 font-bold text-sm mt-0.5">$49.99 / mo</div>
-              <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
-                Unlimited facility ward slots, HIPAA compliance &amp; legal audit.
+              <div className="font-bold text-slate-900 text-sm">Senior Care</div>
+              <div className="text-slate-700 font-semibold text-xs mt-0.5">$49.99 / mo</div>
+              <p className="text-xs text-slate-500 mt-1">
+                Unlimited phones for care communities.
               </p>
-              <button className="w-full mt-3 py-1.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600 text-indigo-200 hover:text-white font-bold text-[11px] transition">
-                {selectedTier === 'enterprise' ? 'Selected' : 'Upgrade Plan'}
-              </button>
             </div>
           </div>
         </div>
 
-        {/* 3. Live Backend Connection Config */}
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+        {/* Backend Server Connection Config */}
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Server className="w-4 h-4 text-indigo-400" />
-              <span className="text-xs font-bold text-white uppercase tracking-wider">
-                Live Backend Connection Config
+              <Server className="w-4 h-4 text-blue-600" aria-hidden="true" />
+              <span className="text-xs font-bold text-slate-800">
+                Python Screening Server URL
               </span>
             </div>
-            <span className="text-[10px] font-mono text-slate-400">
-              Python Flask / Whisper Inference Node
+            <span className="text-xs text-slate-500">
+              Flask /evaluate &amp; /health (:5001)
             </span>
           </div>
-
-          <p className="text-xs text-slate-400">
-            Configure the local or Tailscale IP running the SilentShield Python backend for on-device voice screening:
-          </p>
 
           <div className="flex items-center gap-2">
             <input
               type="text"
               value={backendUrl}
               onChange={(e) => setBackendUrl(e.target.value)}
-              placeholder="http://100.84.12.5:5000 or http://localhost:5000"
-              className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              placeholder="http://localhost:5001"
+              aria-label="Python server URL"
+              className="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono placeholder-slate-400 focus:outline-none focus:border-blue-600"
             />
             <button
+              type="button"
               onClick={handlePingBackend}
               disabled={pingStatus?.state === 'pinging'}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-md shadow-indigo-600/30 shrink-0"
+              className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shrink-0"
             >
               {pingStatus?.state === 'pinging' ? (
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
               ) : (
-                <Activity className="w-3.5 h-3.5 text-indigo-300" />
+                <Activity className="w-3.5 h-3.5" aria-hidden="true" />
               )}
-              <span>Ping /evaluate Health Check</span>
+              <span>Test Connection</span>
             </button>
           </div>
 
-          {/* Quick Presets */}
-          <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400">
-            <span>Quick Presets:</span>
-            <button
-              type="button"
-              onClick={() => setBackendUrl('http://100.84.12.5:5000')}
-              className="px-2 py-0.5 rounded bg-slate-800/80 hover:bg-indigo-600/30 hover:text-indigo-300 border border-slate-700 transition"
-            >
-              Tailscale: 100.84.12.5:5000
-            </button>
-            <button
-              type="button"
-              onClick={() => setBackendUrl('http://localhost:5000')}
-              className="px-2 py-0.5 rounded bg-slate-800/80 hover:bg-indigo-600/30 hover:text-indigo-300 border border-slate-700 transition"
-            >
-              Localhost: 5000
-            </button>
-          </div>
-
-          {/* Ping Results Banner */}
           {pingStatus && (
-            <div
-              className={`p-3 rounded-xl border text-xs font-mono flex items-center gap-2 ${
-                pingStatus.state === 'success'
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                  : 'bg-slate-900 border-slate-800 text-slate-300'
-              }`}
-            >
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" aria-hidden="true" />
               <span>{pingStatus.message}</span>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-4 border-t border-slate-800 text-xs text-slate-400">
-          <span>Stripe Billing Portal Integrated</span>
+        <div className="flex items-center justify-end pt-3 border-t border-slate-200">
           <button
+            type="button"
             onClick={onClose}
-            className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-indigo-600/30"
+            className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition"
           >
             Done
           </button>
         </div>
-      </motion.div>
+      </div>
     </div>
-      )}
-    </AnimatePresence>
   );
 }

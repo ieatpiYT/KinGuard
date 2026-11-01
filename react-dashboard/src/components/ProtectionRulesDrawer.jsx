@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Sliders, X, ShieldAlert, Bell, MessageSquare, PhoneCall, Radio, Check, Lock } from 'lucide-react';
+import { Sliders, X, Bell, Check, Lock } from 'lucide-react';
 
 export default function ProtectionRulesDrawer({
   isOpen,
@@ -15,7 +14,9 @@ export default function ProtectionRulesDrawer({
   const [pushAlerts, setPushAlerts] = useState(settings?.pushAlerts ?? true);
   const [smsAlerts, setSmsAlerts] = useState(settings?.smsAlerts ?? true);
   const [liveTranscript, setLiveTranscript] = useState(true);
-  const [caregiverPhone, setCaregiverPhone] = useState(settings?.caregiverPhone ?? '+1 (555) 019-CARE');
+  const [caregiverPhone, setCaregiverPhone] = useState(settings?.caregiverPhone ?? '+1 (555) 019-2273');
+
+  if (!isOpen) return null;
 
   const handleSave = () => {
     onSaveSettings({
@@ -26,76 +27,61 @@ export default function ProtectionRulesDrawer({
       smsAlerts,
       caregiverPhone
     });
-    onShowToast(`Protection Rules saved: Auto-drop at >${autoDrop}%, Quarantine between ${quarantineFloor}%–${autoDrop}%.`);
+    onShowToast(`Saved screening rules: Auto-block above ${autoDrop}%, Review between ${quarantineFloor}% and ${autoDrop}%.`);
     onClose();
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/75 backdrop-blur-md"
-          />
+    <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="rules-title">
+      <div
+        onClick={onClose}
+        className="absolute inset-0 bg-slate-900/40 transition-opacity"
+      />
 
-          {/* Slide-over panel */}
-          <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-              className="w-screen max-w-xl bg-slate-950/95 border-l border-white/10 shadow-2xl backdrop-blur-2xl flex flex-col justify-between"
-            >
+      <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
+        <div className="w-screen max-w-xl bg-white border-l border-slate-200 shadow-xl flex flex-col justify-between isolated-panel">
           {/* Header */}
-          <div className="p-6 border-b border-slate-800/80">
+          <div className="p-6 border-b border-slate-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                  <Sliders className="w-6 h-6 text-indigo-400" />
+                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center">
+                  <Sliders className="w-5 h-5 text-blue-600" aria-hidden="true" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-extrabold text-white tracking-tight">
-                    AI Screening &amp; Escape Hatch Rules
+                  <h3 id="rules-title" className="text-lg font-bold text-slate-900">
+                    Screening Rules &amp; Alerts
                   </h3>
-                  <p className="text-xs text-slate-400">Configure on-device edge interception thresholds for Mom's Galaxy S24</p>
+                  <p className="text-xs text-slate-500">Choose how unknown callers are handled on Mom's Galaxy S24</p>
                 </div>
               </div>
 
               <button
+                type="button"
                 onClick={onClose}
-                className="p-2 hover:bg-slate-800/80 rounded-xl text-slate-400 hover:text-white transition"
+                className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-900 transition"
+                aria-label="Close panel"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
           </div>
 
           {/* Form Content */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin">
-            
-            {/* Rule 1: Auto-Scrub Threshold Slider */}
-            <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
+          <div className="flex-1 overflow-y-auto p-6 space-y-5 scrollbar-thin">
+            {/* Rule 1: Auto-Block Slider */}
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between gap-4">
                 <div>
-                  <div className="font-bold text-sm text-white flex items-center gap-2">
-                    Auto-Scrub Threshold
-                    <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                      Silently Drop &amp; Delete
-                    </span>
+                  <div className="font-bold text-sm text-slate-900">
+                    Automatic Scam Blocking
                   </div>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Calls at or above this score are instantly terminated and wiped from Mom's phone log.
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Calls scoring above this risk level are blocked immediately without ringing.
                   </p>
                 </div>
-                <div className="text-right">
-                  <span className="text-2xl font-black font-mono text-rose-400">&gt;{autoDrop}%</span>
-                  <span className="text-[10px] text-slate-400 block uppercase font-mono">Confidence</span>
+                <div className="text-right shrink-0">
+                  <span className="text-xl font-bold text-rose-700">&gt;{autoDrop}%</span>
+                  <span className="text-[11px] text-slate-500 block">Risk score</span>
                 </div>
               </div>
 
@@ -103,34 +89,32 @@ export default function ProtectionRulesDrawer({
                 type="range"
                 min="75"
                 max="99"
+                aria-label="Automatic scam blocking threshold"
                 value={autoDrop}
                 onChange={(e) => setAutoDrop(Number(e.target.value))}
-                className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-rose-600"
               />
-              <div className="flex justify-between text-[10px] font-mono text-slate-500">
-                <span>75% (Aggressive)</span>
-                <span className="text-rose-400 font-bold">Default: 90%</span>
-                <span>99% (Strict)</span>
+              <div className="flex justify-between text-xs text-slate-500">
+                <span>75% (More strict)</span>
+                <span className="font-semibold text-slate-700">Recommended: 90%</span>
+                <span>99% (Only obvious scams)</span>
               </div>
             </div>
 
-            {/* Rule 2: Quarantine Triage Window Slider */}
-            <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
+            {/* Rule 2: Caregiver Review Window */}
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between gap-4">
                 <div>
-                  <div className="font-bold text-sm text-white flex items-center gap-2">
-                    Quarantine Triage Window
-                    <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                      Silence Ringer &rarr; Caregiver Queue
-                    </span>
+                  <div className="font-bold text-sm text-slate-900">
+                    Caregiver Review Range
                   </div>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Ambiguous calls routed to your Caregiver Queue without waking Mom's phone.
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Uncertain calls in this range are silenced and sent to your review queue.
                   </p>
                 </div>
-                <div className="text-right">
-                  <span className="text-2xl font-black font-mono text-amber-400">{quarantineFloor}% – {autoDrop}%</span>
-                  <span className="text-[10px] text-slate-400 block uppercase font-mono">Range</span>
+                <div className="text-right shrink-0">
+                  <span className="text-xl font-bold text-amber-800">{quarantineFloor}%–{autoDrop}%</span>
+                  <span className="text-[11px] text-slate-500 block">Review range</span>
                 </div>
               </div>
 
@@ -138,155 +122,154 @@ export default function ProtectionRulesDrawer({
                 type="range"
                 min="30"
                 max="70"
+                aria-label="Caregiver review minimum threshold"
                 value={quarantineFloor}
                 onChange={(e) => setQuarantineFloor(Number(e.target.value))}
-                className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-amber-600"
               />
-              <div className="flex justify-between text-[10px] font-mono text-slate-500">
-                <span>30% Floor</span>
-                <span className="text-amber-400 font-bold">Standard 50%</span>
-                <span>70% Floor</span>
+              <div className="flex justify-between text-xs text-slate-500">
+                <span>30%</span>
+                <span className="font-semibold text-slate-700">Recommended: 50%</span>
+                <span>70%</span>
               </div>
             </div>
 
-            {/* Rule 3: Emergency Repeat-Caller Escape Hatch */}
-            <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
+            {/* Rule 3: Emergency Repeat-Caller Bypass */}
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+              <div className="flex items-center justify-between gap-4">
                 <div>
-                  <div className="font-bold text-sm text-white flex items-center gap-2">
-                    Emergency Repeat-Caller Escape Hatch
-                    <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                      Life-Safety Bypass
-                    </span>
+                  <div className="font-bold text-sm text-slate-900">
+                    Emergency Repeat-Caller Safety
                   </div>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    5-Minute Sliding Window: if an unknown number calls a 2nd time within 5 minutes, allow ringer through in case of true family or hospital emergency.
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    If an unknown number calls twice within 5 minutes, let it ring through in case of a family or medical emergency.
                   </p>
                 </div>
 
                 <button
                   type="button"
+                  role="switch"
+                  aria-checked={repeatBypass}
                   onClick={() => setRepeatBypass(!repeatBypass)}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    repeatBypass ? 'bg-indigo-600' : 'bg-slate-700'
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border transition-colors duration-150 ${
+                    repeatBypass ? 'bg-blue-600 border-blue-700' : 'bg-slate-300 border-slate-400'
                   }`}
                 >
                   <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-150 ${
                       repeatBypass ? 'translate-x-5' : 'translate-x-0'
                     }`}
                   />
                 </button>
               </div>
-
-              <div className="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 p-2 rounded-xl border border-emerald-500/20">
-                Status: {repeatBypass ? 'ENABLED (Safe: Emergency Hospital & Doctor callbacks will not be blocked)' : 'DISABLED (Strict: All repeat callers screened)'}
-              </div>
             </div>
 
             {/* Rule 4: Caregiver Alert Channels */}
-            <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-4">
-              <div className="font-bold text-sm text-white flex items-center gap-2">
-                <Bell className="w-4 h-4 text-indigo-400" />
-                Caregiver Alert Channels
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3.5">
+              <div className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                <Bell className="w-4 h-4 text-blue-600" aria-hidden="true" />
+                Caregiver Notifications
               </div>
 
-              {/* Push Webhook */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                 <div>
-                  <div className="text-xs font-semibold text-slate-200">Push Webhook Notification</div>
-                  <div className="text-[11px] text-slate-400">Instant notification to Caregiver mobile app</div>
+                  <div className="text-xs font-semibold text-slate-800">Push Notifications</div>
+                  <div className="text-xs text-slate-500">Alert me when a call needs review</div>
                 </div>
                 <button
                   type="button"
+                  role="switch"
+                  aria-checked={pushAlerts}
                   onClick={() => setPushAlerts(!pushAlerts)}
-                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                    pushAlerts ? 'bg-indigo-600' : 'bg-slate-700'
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border transition-colors duration-150 ${
+                    pushAlerts ? 'bg-blue-600 border-blue-700' : 'bg-slate-300 border-slate-400'
                   }`}
                 >
                   <span
-                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-150 ${
                       pushAlerts ? 'translate-x-4' : 'translate-x-0'
                     }`}
                   />
                 </button>
               </div>
 
-              {/* Instant SMS Alert */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                 <div>
-                  <div className="text-xs font-semibold text-slate-200">Instant SMS Alert</div>
-                  <div className="text-[11px] text-slate-400">Sends text with 1-click whitelist link to:</div>
+                  <div className="text-xs font-semibold text-slate-800">Text Message (SMS) Alerts</div>
+                  <div className="text-xs text-slate-500">Send a text with a quick-approve link to:</div>
                   <input
                     type="text"
                     value={caregiverPhone}
                     onChange={(e) => setCaregiverPhone(e.target.value)}
-                    className="mt-1 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-indigo-300 font-mono focus:outline-none focus:border-indigo-500"
+                    aria-label="Caregiver phone number"
+                    className="mt-1.5 bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
                   />
                 </div>
                 <button
                   type="button"
+                  role="switch"
+                  aria-checked={smsAlerts}
                   onClick={() => setSmsAlerts(!smsAlerts)}
-                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                    smsAlerts ? 'bg-emerald-500' : 'bg-slate-700'
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border transition-colors duration-150 ${
+                    smsAlerts ? 'bg-blue-600 border-blue-700' : 'bg-slate-300 border-slate-400'
                   }`}
                 >
                   <span
-                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-150 ${
                       smsAlerts ? 'translate-x-4' : 'translate-x-0'
                     }`}
                   />
                 </button>
               </div>
 
-              {/* Live Audio Transcript Preview */}
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-xs font-semibold text-slate-200">Live Audio Transcript Preview</div>
-                  <div className="text-[11px] text-slate-400">Display streaming Whisper transcript in Caregiver Triage</div>
+                  <div className="text-xs font-semibold text-slate-800">Voicemail Transcript Preview</div>
+                  <div className="text-xs text-slate-500">Show written summary of held calls</div>
                 </div>
                 <button
                   type="button"
+                  role="switch"
+                  aria-checked={liveTranscript}
                   onClick={() => setLiveTranscript(!liveTranscript)}
-                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                    liveTranscript ? 'bg-indigo-600' : 'bg-slate-700'
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border transition-colors duration-150 ${
+                    liveTranscript ? 'bg-blue-600 border-blue-700' : 'bg-slate-300 border-slate-400'
                   }`}
                 >
                   <span
-                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-150 ${
                       liveTranscript ? 'translate-x-4' : 'translate-x-0'
                     }`}
                   />
                 </button>
               </div>
             </div>
-
           </div>
 
           {/* Footer */}
-          <div className="p-5 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400 bg-slate-950">
-            <span className="text-slate-400 font-mono text-[11px] flex items-center gap-1.5">
-              <Lock className="w-3.5 h-3.5 text-indigo-400" /> Changes sync to Mom's S24 via Tailscale WireGuard
+          <div className="p-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 bg-slate-50">
+            <span className="flex items-center gap-1.5">
+              <Lock className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" /> Syncs automatically to Mom's phone
             </span>
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={onClose}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold transition"
+                className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg font-semibold transition"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleSave}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition shadow-lg shadow-indigo-600/30 flex items-center gap-1.5"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition flex items-center gap-1.5"
               >
-                <Check className="w-4 h-4" /> Save Rules
+                <Check className="w-4 h-4" aria-hidden="true" /> Save Changes
               </button>
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
-      )}
-    </AnimatePresence>
   );
 }

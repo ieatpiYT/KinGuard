@@ -2,10 +2,10 @@ import React from 'react';
 
 /**
  * RadialRiskRing
- * Renders an SVG radial progress ring with glowing threat bar
- * and large typography (text-3xl font-black)
+ * Clean, accessible SVG circular indicator without GPU-heavy drop-shadow filters.
+ * Pair with text labels ("High Risk" / "Needs Review" / "Low Risk") so state is never conveyed by color alone.
  */
-export default function RadialRiskRing({ score = 78, size = 68, strokeWidth = 5 }) {
+export default function RadialRiskRing({ score = 78, size = 56, strokeWidth = 5 }) {
   const radius = (size - strokeWidth * 2) / 2;
   const circumference = radius * 2 * Math.PI;
   const offset = circumference - (score / 100) * circumference;
@@ -13,24 +13,21 @@ export default function RadialRiskRing({ score = 78, size = 68, strokeWidth = 5 
   const isHighThreat = score >= 90;
   const isAmbiguous = score >= 50 && score < 90;
 
-  const ringColor = isHighThreat ? '#f43f5e' : isAmbiguous ? '#fbbf24' : '#10b981';
-  const glowColor = isHighThreat ? 'rgba(244, 63, 94, 0.4)' : 'rgba(251, 191, 36, 0.35)';
+  const ringColor = isHighThreat ? '#e11d48' : isAmbiguous ? '#d97706' : '#059669';
+  const labelText = isHighThreat ? 'High risk' : isAmbiguous ? 'Review' : 'Low risk';
 
   return (
-    <div className="flex items-center gap-3">
-      {/* SVG Radial Progress Ring */}
+    <div className="flex items-center gap-2.5" aria-label={`Risk score ${score} percent (${labelText})`}>
       <div className="relative flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
-        <svg className="w-full h-full -rotate-90" viewBox={`0 0 ${size} ${size}`}>
-          {/* Background circle track */}
+        <svg className="w-full h-full -rotate-90" viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
           <circle
             cx={size / 2}
             cy={size / 2}
             r={radius}
-            stroke="rgba(51, 65, 85, 0.4)"
+            stroke="#e2e8f0"
             strokeWidth={strokeWidth}
             fill="transparent"
           />
-          {/* Animated Glowing Progress circle */}
           <circle
             cx={size / 2}
             cy={size / 2}
@@ -41,52 +38,23 @@ export default function RadialRiskRing({ score = 78, size = 68, strokeWidth = 5 
             strokeDashoffset={offset}
             strokeLinecap="round"
             fill="transparent"
-            style={{
-              filter: `drop-shadow(0 0 6px ${glowColor})`,
-              transition: 'stroke-dashoffset 0.8s ease-in-out'
-            }}
+            style={{ transition: 'stroke-dashoffset 0.4s ease-out' }}
           />
         </svg>
-
-        {/* Center score mini label */}
-        <div className="absolute inset-0 flex items-center justify-center text-[10px] font-mono font-black text-slate-400">
-          RISK
+        <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-slate-800">
+          {score}%
         </div>
       </div>
 
-      {/* Numerical score & threat rating */}
-      <div>
-        <div className="flex items-baseline gap-0.5">
-          <span
-            className={`text-3xl xl:text-4xl font-black font-mono tracking-tight ${
-              isHighThreat ? 'text-rose-400' : 'text-amber-400'
-            }`}
-            style={{
-              filter: `drop-shadow(0 0 12px ${glowColor})`
-            }}
-          >
-            {score}
-          </span>
-          <span
-            className={`text-sm font-black font-mono ${
-              isHighThreat ? 'text-rose-400/80' : 'text-amber-500/80'
-            }`}
-          >
-            %
-          </span>
+      <div className=" hidden sm:block">
+        <div
+          className={`text-xs font-semibold ${
+            isHighThreat ? 'text-rose-700' : isAmbiguous ? 'text-amber-800' : 'text-emerald-700'
+          }`}
+        >
+          {labelText}
         </div>
-
-        {/* Mini glowing threat bar */}
-        <div className="w-20 h-1.5 bg-slate-800 rounded-full mt-1 overflow-hidden border border-slate-700/60">
-          <div
-            className={`h-full rounded-full transition-all duration-700 ${
-              isHighThreat
-                ? 'bg-gradient-to-r from-rose-500 to-red-600 shadow-[0_0_8px_rgba(244,63,94,0.6)]'
-                : 'bg-gradient-to-r from-amber-400 to-orange-500 shadow-[0_0_8px_rgba(251,191,36,0.5)]'
-            }`}
-            style={{ width: `${score}%` }}
-          />
-        </div>
+        <div className="text-[11px] text-slate-500">Confidence</div>
       </div>
     </div>
   );

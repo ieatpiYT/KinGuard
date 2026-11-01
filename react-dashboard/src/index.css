@@ -4,21 +4,26 @@
 
 @layer base {
   :root {
-    color-scheme: dark;
+    color-scheme: light;
   }
-  
+
   html, body {
     margin: 0;
     padding: 0;
-    background-color: #03050c;
-    color: #f1f5f9;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #f8fafc;
+    color: #0f172a;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
   }
 }
 
-/* Custom Ultra-Dark Sleek Scrollbar (Zero White Native Scrollbars) */
+/* Scope isolated cards and drawers to prevent page-wide reflows */
+.isolated-panel {
+  contain: layout style paint;
+}
+
+/* Clean, subtle scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -29,50 +34,24 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(30, 41, 59, 0.8);
+  background: #cbd5e1;
   border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.7);
+  background: #94a3b8;
 }
 
-/* Strict custom scrollbar-thin class required by PRD */
 .scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: rgba(30, 41, 59, 0.8) transparent;
+  scrollbar-color: #cbd5e1 transparent;
 }
 
-.scrollbar-thin::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(30, 41, 59, 0.8);
-  border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.7);
-}
-
-/* Firefox scrollbar support */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(30, 41, 59, 0.8) transparent;
-}
-
-.scrollbar-none::-webkit-scrollbar {
-  display: none;
-}
-.scrollbar-none {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+@media (forced-colors: active) {
+  .isolated-panel,
+  button,
+  input,
+  select {
+    border: 1px solid ButtonText;
+  }
 }

@@ -1,8 +1,11 @@
 """SilentShield backend: scores incoming calls and tells the Android app what to do.
 
-POST /evaluate      -> {"action": "reject"|"silence"|"allow", "confidence_score": float, "reason": str}
-GET  /flagged-calls -> silenced calls for the dashboard, newest first
-POST /resolve       -> {"id": int, "resolution": "whitelist"|"block"}
+POST /evaluate       -> {"action": "reject"|"silence"|"allow", "confidence_score": float, "reason": str}
+POST /evaluate-audio -> transcribe & score call audio or transcript with Groq Whisper + LLM
+GET  /flagged-calls  -> silenced calls for the dashboard, newest first
+POST /resolve        -> {"id": int, "resolution": "whitelist"|"block"}
+POST /sync           -> sync whitelist / blocklist numbers from phone or dashboard
+POST /reset          -> reset in-memory demo state
 GET  /health
 """
 
@@ -23,6 +26,7 @@ load_dotenv()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
+WHISPER_MODEL = os.getenv("WHISPER_MODEL", "whisper-large-v3-turbo")
 LLM_TIMEOUT_S = 2.0
 BYPASS_WINDOW_S = 5 * 60
 REJECT_ABOVE = 0.90
@@ -62,6 +66,45 @@ Do not exceed 0.9 on metadata alone unless several strong signals combine.
 
 Respond with ONLY a JSON object, no other text:
 {"confidence": <number 0-1>, "reason": "<max 12 words>"}"""
+
+TRANSCRIPT_SYSTEM_PROMPT = """You are SilentShield's real-time voice scam analyzer. You receive a live speech-to-text
+transcript from an incoming phone call along with caller metadata.
+
+Analyze the transcript for social engineering and scam patterns:
+- Authority impersonation (IRS, Social Security, Police/Sheriff, FBI, Medicare, Bank fraud dept, Tech Support)
+- Urgency, coercion, or threats (arrest warrant, account freeze, deportation, lawsuit, utility shutoff)
+- Family / Grandparent emergency scams (car accident, bail money, "don't tell Mom or Dad")
+- Unusual payment demands (gift cards, Bitcoin/crypto, wire transfer, cash courier, Zelle)
+
+If clear scam patterns appear in the transcript, set confidence between 0.91 and 0.99.
+If the transcript is suspicious/ambiguous (e.g. unverified caller asking for personal info), set confidence between 0.55 and 0.89.
+If it is clearly benign (e.g. doctor appointment reminder, pharmacy, normal family chat), set confidence below 0.30.
+
+Respond with ONLY a JSON object, no other text:
+{
+  "confidence": <number 0-1>,
+  "reason": "<concise 6-14 word explanation>",
+  "tactics": ["<tag 1>", "<tag 2>", "<tag 3>"]
+}"""
+
+
+def _number_variants(raw):
+    """Return canonical E.164 and 10-digit variants so +18005828888 and 8005828888 match."""
+    s = str(raw or "").strip()
+    if not s:
+        return set()
+    digits = "".join(c for c in s if c.isdigit())
+    if len(digits) == 11 and digits.startswith("1"):
+        ten = digits[1:]
+    else:
+        ten = digits
+    variants = {s}
+    if digits:
+        variants.add(digits)
+    if len(ten) == 10:
+        variants.add(ten)
+        variants.add(f"+1{ten}")
+    return variants
 
 
 # ---- Scoring ----
@@ -127,6 +170,52 @@ def rule_score(caller_id, verification_status):
     return min(score, 0.99), (", ".join(reasons) or "no red flags")
 
 
+def score_transcript(caller_id, transcript):
+    """Score a transcribed call audio using Groq LLM, with keyword heuristic fallback."""
+    try:
+        from groq import Groq
+
+        client = Groq(api_key=GROQ_API_KEY, timeout=6.0, max_retries=0)
+        resp = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[
+                {"role": "system", "content": TRANSCRIPT_SYSTEM_PROMPT},
+                {"role": "user", "content": json.dumps({
+                    "caller_id": caller_id,
+                    "transcript": transcript,
+                })},
+            ],
+            response_format={"type": "json_object"},
+            temperature=0,
+            reasoning_effort="low",
+            max_tokens=300,
+        )
+        parsed = json.loads(resp.choices[0].message.content)
+        confidence = max(0.0, min(1.0, float(parsed.get("confidence", 0.85))))
+        reason = str(parsed.get("reason") or "High-risk scam language detected in audio").strip()[:140]
+        tactics = [str(t) for t in (parsed.get("tactics") or [])][:4]
+        if not tactics:
+            tactics = ["Voice AI Flagged", "Social Engineering"]
+        return confidence, reason, tactics
+    except Exception as e:
+        log.warning("Transcript LLM fallback (%s)", e)
+        lower = transcript.lower()
+        score = 0.25
+        tactics = []
+        if any(w in lower for w in ("irs", "internal revenue", "social security", "officer", "sheriff", "police", "fbi", "medicare")):
+            score += 0.35
+            tactics.append("Authority Impersonation")
+        if any(w in lower for w in ("warrant", "arrest", "jail", "deputies", "immediately", "urgent", "suspended", "accident")):
+            score += 0.25
+            tactics.append("Urgency / Coercion")
+        if any(w in lower for w in ("gift card", "target", "apple", "wire", "bitcoin", "crypto", "cash", "bail", "payment", "dollars")):
+            score += 0.25
+            tactics.append("Payment / Wire Demand")
+        score = min(0.98, score)
+        reason = ", ".join(tactics) if tactics else "Transcript analyzed by heuristic fallback"
+        return score, reason, (tactics or ["Voice Screened"])
+
+
 # ---- State helpers ----
 
 def _log_flag(caller_id, confidence, reason, timestamp):
@@ -140,6 +229,7 @@ def _log_flag(caller_id, confidence, reason, timestamp):
     }
     with _lock:
         flagged_calls.append(event)
+    return event["id"]
 
 
 def _respond(action, confidence, reason, caller_id, timestamp, log_flag=False):
@@ -163,18 +253,36 @@ def health():
 def evaluate():
     try:
         data = request.get_json(silent=True) or {}
-        caller_id = str(data.get("caller_id") or "").strip()
-        verification_status = str(data.get("verification_status") or "NOT_VERIFIED").strip().upper()
+        raw_caller = data.get("caller_id")
+        if raw_caller is None:
+            raw_caller = data.get("number")
+        caller_id = str(raw_caller or "").strip()
+
+        raw_ver = data.get("verification_status")
+        if raw_ver is None:
+            raw_ver = data.get("verificationStatus")
+        if isinstance(raw_ver, int):
+            verification_status = {1: "PASSED", 2: "FAILED"}.get(raw_ver, "NOT_VERIFIED")
+        else:
+            verification_status = str(raw_ver or "NOT_VERIFIED").strip().upper()
+
         call_direction = str(data.get("call_direction") or "INCOMING").strip().upper()
         try:
             timestamp = int(data.get("timestamp"))
         except (TypeError, ValueError):
             timestamp = int(time.time())
 
+        variants = _number_variants(caller_id)
+
         with _lock:
-            whitelisted = caller_id in whitelist
-            blocked = caller_id in blocklist
+            whitelisted = bool(variants & whitelist) or (caller_id in whitelist)
+            blocked = bool(variants & blocklist) or (caller_id in blocklist)
             last = last_flagged_at.get(caller_id)
+            if last is None:
+                for v in variants:
+                    if v in last_flagged_at:
+                        last = last_flagged_at[v]
+                        break
 
         if whitelisted:
             return _respond("allow", 0.0, "Whitelisted number", caller_id, timestamp)
@@ -211,6 +319,47 @@ def evaluate():
                         "reason": "Fallback (internal error)"}), 200
 
 
+@app.post("/evaluate-audio")
+def evaluate_audio():
+    """Score a transcribed audio stream and log it in the server terminal + flagged_calls."""
+    data = request.get_json(silent=True) or {}
+    caller_id = str(data.get("caller_id") or "+18005557777").strip()
+    transcript = str(data.get("transcript") or "").strip()
+    timestamp = int(time.time())
+
+    confidence, reason, tactics = score_transcript(caller_id, transcript)
+    if confidence > REJECT_ABOVE:
+        action = "reject"
+    elif confidence < ALLOW_BELOW:
+        action = "allow"
+    else:
+        action = "silence"
+
+    flag_id = None
+    if action in ("silence", "reject"):
+        flag_id = _log_flag(caller_id, confidence, reason, timestamp)
+        with _lock:
+            last_flagged_at[caller_id] = time.time()
+
+    log.info(
+        "evaluate-audio %s -> %s (%.2f) reason='%s' transcript='%s'",
+        caller_id,
+        action,
+        confidence,
+        reason,
+        transcript[:80] + ("..." if len(transcript) > 80 else ""),
+    )
+    return jsonify({
+        "id": flag_id,
+        "caller_id": caller_id,
+        "action": action,
+        "confidence_score": round(confidence, 2),
+        "reason": reason,
+        "tactics": tactics,
+        "transcript": transcript,
+    })
+
+
 @app.get("/flagged-calls")
 def get_flagged_calls():
     with _lock:
@@ -233,18 +382,55 @@ def resolve():
         if call is None:
             return jsonify({"error": f"no flagged call with id {call_id}"}), 404
         number = call["caller_id"]
+        variants = _number_variants(number) | {number}
         if resolution == "whitelist":
-            whitelist.add(number)
-            blocklist.discard(number)
+            whitelist.update(variants)
+            blocklist.difference_update(variants)
             call["status"] = "whitelisted"
         else:
-            blocklist.add(number)
-            whitelist.discard(number)
+            blocklist.update(variants)
+            whitelist.difference_update(variants)
             call["status"] = "blocked"
         result = dict(call)
 
     log.info("resolve id=%s %s -> %s", call_id, number, resolution)
     return jsonify({"ok": True, "call": result})
+
+
+@app.post("/sync")
+def sync_lists():
+    """Allow the caregiver dashboard or Android contact worker to sync whitelist/blocklist entries."""
+    data = request.get_json(silent=True) or {}
+    with _lock:
+        for num in data.get("add_whitelist") or []:
+            variants = _number_variants(num)
+            whitelist.update(variants)
+            blocklist.difference_update(variants)
+        for num in data.get("remove_whitelist") or []:
+            whitelist.difference_update(_number_variants(num))
+        for num in data.get("add_blocklist") or []:
+            variants = _number_variants(num)
+            blocklist.update(variants)
+            whitelist.difference_update(variants)
+        for num in data.get("remove_blocklist") or []:
+            blocklist.difference_update(_number_variants(num))
+        return jsonify({
+            "ok": True,
+            "whitelist": sorted(whitelist),
+            "blocklist": sorted(blocklist),
+        })
+
+
+@app.post("/reset")
+def reset_state():
+    """Reset in-memory state for clean demo rehearsals."""
+    with _lock:
+        whitelist.clear()
+        blocklist.clear()
+        flagged_calls.clear()
+        last_flagged_at.clear()
+    log.info("reset -> cleared whitelist, blocklist, flagged_calls, last_flagged_at")
+    return jsonify({"ok": True})
 
 
 if __name__ == "__main__":
