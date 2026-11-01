@@ -426,9 +426,9 @@ Planned next steps:
 
 | Name | Owns |
 |---|---|
-| **Cole** | `android-app/`, the call-screening service and network client |
+| **Luke** | `android-app/`, the call-screening service and network client |
 | **Eric** | `python-backend/`, the decision engine, LLM integration, and integration glue |
-| **Lucas** | `react-dashboard/`, the caregiver Mission Control UI |
+| **Mukunth** | `react-dashboard/`, the caregiver Mission Control UI |
 
 ---
 
