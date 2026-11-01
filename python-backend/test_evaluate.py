@@ -1,4 +1,4 @@
-"""Tests for the SilentShield backend. Run: ./venv/bin/python test_evaluate.py
+"""Tests for the KinGuard backend. Run: ./venv/bin/python test_evaluate.py
 
 Uses Flask's test client, so no server is needed. The LLM is mocked so routing is deterministic.
 If GROQ_API_KEY is set, one extra test hits the real Groq API.

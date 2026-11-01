@@ -21,9 +21,9 @@ class CallStateReceiver : BroadcastReceiver() {
 
             when (state) {
                 TelephonyManager.EXTRA_STATE_OFFHOOK -> {
-                    // OFFHOOK means the call was just answered
+                    // OFFHOOK means the call was explicitly answered by the user
                     if (prefs.getBoolean("drop_after_answer", false)) {
-                        Log.d("SilentShield", "Call answered! Starting 5-second drop timer...")
+                        Log.d("KinGuard", "Call answered! Starting 5-second drop timer...")
 
                         // Clear the flag so we don't accidentally drop future legitimate calls
                         prefs.edit().putBoolean("drop_after_answer", false).apply()
@@ -34,18 +34,18 @@ class CallStateReceiver : BroadcastReceiver() {
                                 if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.ANSWER_PHONE_CALLS) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
                                     @Suppress("DEPRECATION")
                                     val success = telecomManager.endCall()
-                                    Log.d("SilentShield", "Live drop after answer executed! Success: $success")
+                                    Log.d("KinGuard", "Live drop after answer executed! Success: $success")
                                 } else {
-                                    Log.e("SilentShield", "Missing permission for live drop")
+                                    Log.e("KinGuard", "Missing permission for live drop")
                                 }
                             } catch (e: Exception) {
-                                Log.e("SilentShield", "Failed to live drop call", e)
+                                Log.e("KinGuard", "Failed to live drop call", e)
                             }
                         }, 5000)
                     }
                 }
                 TelephonyManager.EXTRA_STATE_IDLE -> {
-                    // IDLE means the call ended (or was missed). Clear the flag just in case.
+                    // IDLE means the call ended, was rejected, or was missed. Always clear flag.
                     prefs.edit().putBoolean("drop_after_answer", false).apply()
                 }
             }

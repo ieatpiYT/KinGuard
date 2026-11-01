@@ -1,4 +1,4 @@
-# SilentShield Backend (Flask)
+# KinGuard Backend (Flask)
 
 Scores incoming calls from call metadata and tells the Android app to `reject`, `silence`, or `allow`.
 

@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Silent Shield"
+rootProject.name = "KinGuard"
 include(":app")

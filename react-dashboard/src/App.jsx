@@ -163,7 +163,6 @@ export default function App() {
                 (c) => normalizeDigits(c.callerId) === norm
               );
               if (existingIdx !== -1) {
-                // Attach Python backendId & real Groq LLM reason to existing card
                 const updated = [...prev];
                 updated[existingIdx] = {
                   ...updated[existingIdx],
@@ -184,7 +183,7 @@ export default function App() {
                   timestamp: 'Just now',
                   reason: fc.reason || 'Silenced for caregiver review',
                   transcript:
-                    'Call silenced before ringing Mom\'s phone. Awaiting caregiver decision.',
+                    "Call silenced before ringing Mom's phone. Awaiting caregiver decision.",
                   tags: ['Silenced', 'Groq AI Scored']
                 },
                 ...prev
@@ -199,7 +198,7 @@ export default function App() {
           if (seenEventIdsRef.current.has(ev.id)) continue;
           seenEventIdsRef.current.add(ev.id);
 
-          // Live Audio Transcription Demo Event (from python-backend/audio_demo.py)
+          // Live Audio Transcription Demo Event (from python-backend/audio_demo.py or :5001 web console)
           if (ev.isAudioDemo) {
             if (ev.backendId) {
               seenPythonFlagIdsRef.current.add(ev.backendId);
@@ -415,7 +414,6 @@ export default function App() {
       // Fallback to UI simulation if offline
     }
 
-    // If caregiver already whitelisted +1 (800) 582-8888, it will ring out loud on the emulator!
     if (adbResult?.isWhitelisted) {
       showToast(
         `Dialing ${simDisplayNumber} on Android Emulator — Caller is now Allowed, so Mom's phone rings normally!`,
@@ -424,7 +422,6 @@ export default function App() {
       return;
     }
 
-    // If caregiver already blocked +1 (800) 582-8888, it will be rejected on the emulator!
     if (adbResult?.isBlacklisted) {
       setMetrics((m) => ({ ...m, threatsScrubbed: m.threatsScrubbed + 1 }));
       showToast(
@@ -548,26 +545,26 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col md:flex-row font-sans">
+    <div className="min-h-screen bg-white text-[#18365A] flex flex-col md:flex-row font-sans">
       {/* TOAST NOTIFICATION BANNER */}
       {toast && (
         <div
           role="status"
           aria-live="polite"
-          className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl shadow-lg flex items-center gap-3 text-sm font-medium max-w-xl border transition-all ${
+          className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl shadow-lg flex items-center gap-3 text-sm font-semibold max-w-xl border transition-all ${
             toast.type === 'rose'
               ? 'bg-rose-50 border-rose-300 text-rose-900'
               : toast.type === 'amber'
-              ? 'bg-amber-50 border-amber-300 text-amber-900'
-              : 'bg-white border-slate-300 text-slate-800'
+              ? 'bg-[#FFF3EB] border-[#F9C8A7] text-[#C24E0A]'
+              : 'bg-[#EFF5EC] border-[#C3D7BC] text-[#18365A]'
           }`}
         >
           {toast.type === 'rose' ? (
             <XCircle className="w-4 h-4 text-rose-600 shrink-0" aria-hidden="true" />
           ) : toast.type === 'amber' ? (
-            <PhoneOff className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
+            <PhoneOff className="w-4 h-4 text-[#FD7A2C] shrink-0" aria-hidden="true" />
           ) : (
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" aria-hidden="true" />
+            <CheckCircle2 className="w-4 h-4 text-[#6A8B5E] shrink-0" aria-hidden="true" />
           )}
           <span>{toast.message}</span>
         </div>
@@ -576,34 +573,38 @@ export default function App() {
       {/* ========================================================= */}
       {/* LEFT SIDEBAR                                              */}
       {/* ========================================================= */}
-      <aside className="w-full md:w-72 bg-white border-b md:border-b-0 md:border-r border-slate-200 flex flex-col justify-between shrink-0 p-5 md:min-h-screen">
+      <aside className="w-full md:w-72 bg-[#FBF9ED]/70 border-b md:border-b-0 md:border-r border-[#E5E0C8] flex flex-col justify-between shrink-0 p-5 md:min-h-screen">
         <div>
           {/* Logo & Branding */}
-          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-sm">
-              <ShieldCheck className="w-5 h-5" aria-hidden="true" />
-            </div>
+          <div className="flex items-center gap-3.5 mb-6 pb-4 border-b border-[#E5E0C8]">
+            <img
+              src="/kinguard-mark.jpg"
+              alt="KinGuard Shield Logo"
+              className="w-12 h-12 rounded-xl object-cover shadow-sm border border-[#6A8B5E]/30 shrink-0"
+            />
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-slate-900 text-base tracking-tight">KinGuard</span>
-                <span className="text-[11px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-semibold">
+                <span className="font-display font-bold text-[#18365A] text-xl tracking-tight">
+                  KinGuard
+                </span>
+                <span className="text-[11px] px-2 py-0.5 rounded-md bg-[#FFF3EB] text-[#C24E0A] border border-[#F9C8A7] font-bold">
                   Family
                 </span>
               </div>
-              <p className="text-xs text-slate-500">Caregiver Dashboard</p>
+              <p className="text-xs text-slate-600 font-medium">Caregiver Dashboard</p>
             </div>
           </div>
 
           {/* Protected Device Selector */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-1.5 px-1">
-              <span className="text-xs font-semibold text-slate-500">
+              <span className="text-xs font-bold text-slate-600">
                 Protected Phone
               </span>
               <button
                 type="button"
                 onClick={() => setShowDeviceModal(true)}
-                className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                className="text-xs text-[#4F6B45] hover:text-[#18365A] font-bold"
               >
                 Switch
               </button>
@@ -612,18 +613,18 @@ export default function App() {
             <button
               type="button"
               onClick={() => setShowDeviceModal(true)}
-              className="w-full text-left bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-xl p-3 flex items-center justify-between transition"
+              className="w-full text-left bg-white hover:bg-[#EFF5EC]/60 border border-[#C3D7BC] rounded-xl p-3 flex items-center justify-between transition shadow-sm"
             >
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center text-slate-700 border border-slate-200">
+                <div className="w-9 h-9 rounded-lg bg-[#EFF5EC] flex items-center justify-center text-[#4F6B45] border border-[#C3D7BC]">
                   <Smartphone className="w-5 h-5" aria-hidden="true" />
                 </div>
                 <div>
-                  <div className="font-semibold text-sm text-slate-900 flex items-center gap-2">
+                  <div className="font-bold text-sm text-[#18365A] flex items-center gap-2">
                     Mom's Galaxy S24
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" title="Online" />
+                    <span className="w-2 h-2 rounded-full bg-[#6A8B5E]" title="Online" />
                   </div>
-                  <div className="text-xs text-emerald-700 font-medium">
+                  <div className="text-xs text-[#4F6B45] font-semibold">
                     Quiet protection active
                   </div>
                 </div>
@@ -633,7 +634,7 @@ export default function App() {
           </div>
 
           {/* Navigation Links */}
-          <nav className="space-y-1 mb-6" aria-label="Dashboard sections">
+          <nav className="space-y-1.5 mb-6" aria-label="Dashboard sections">
             <button
               type="button"
               onClick={() => {
@@ -641,18 +642,25 @@ export default function App() {
                 setShowHistoryDrawer(false);
                 setShowRulesDrawer(false);
               }}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-medium text-sm transition ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-semibold text-sm transition ${
                 !showWhitelistDrawer && !showHistoryDrawer && !showRulesDrawer
-                  ? 'bg-blue-50 text-blue-800 border border-blue-200 font-semibold'
-                  : 'text-slate-700 hover:bg-slate-100'
+                  ? 'bg-[#6A8B5E] text-white shadow-sm'
+                  : 'text-[#18365A] hover:bg-[#EFF5EC]'
               }`}
             >
               <div className="flex items-center gap-3">
-                <ShieldCheck className="w-4 h-4 text-blue-600" aria-hidden="true" />
+                <ShieldCheck
+                  className={`w-4 h-4 ${
+                    !showWhitelistDrawer && !showHistoryDrawer && !showRulesDrawer
+                      ? 'text-[#FBF9ED]'
+                      : 'text-[#6A8B5E]'
+                  }`}
+                  aria-hidden="true"
+                />
                 <span>Overview &amp; Review</span>
               </div>
               {quarantineQueue.length > 0 && (
-                <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-amber-100 text-amber-900 border border-amber-300">
+                <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-[#FD7A2C] text-white">
                   {quarantineQueue.length}
                 </span>
               )}
@@ -665,17 +673,17 @@ export default function App() {
                 setShowHistoryDrawer(false);
                 setShowRulesDrawer(false);
               }}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-medium text-sm transition ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-semibold text-sm transition ${
                 showWhitelistDrawer
-                  ? 'bg-blue-50 text-blue-800 border border-blue-200 font-semibold'
-                  : 'text-slate-700 hover:bg-slate-100'
+                  ? 'bg-[#6A8B5E] text-white shadow-sm'
+                  : 'text-[#18365A] hover:bg-[#EFF5EC]'
               }`}
             >
               <div className="flex items-center gap-3">
-                <UserCheck className="w-4 h-4 text-emerald-600" aria-hidden="true" />
+                <UserCheck className="w-4 h-4 text-[#6A8B5E]" aria-hidden="true" />
                 <span>Allowed Contacts</span>
               </div>
-              <span className="text-xs text-slate-600 font-semibold bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+              <span className="text-xs text-[#18365A] font-bold bg-white px-2 py-0.5 rounded-md border border-[#E5E0C8]">
                 {whitelist.length}
               </span>
             </button>
@@ -687,17 +695,17 @@ export default function App() {
                 setShowWhitelistDrawer(false);
                 setShowRulesDrawer(false);
               }}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-medium text-sm transition ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-semibold text-sm transition ${
                 showHistoryDrawer
-                  ? 'bg-blue-50 text-blue-800 border border-blue-200 font-semibold'
-                  : 'text-slate-700 hover:bg-slate-100'
+                  ? 'bg-[#6A8B5E] text-white shadow-sm'
+                  : 'text-[#18365A] hover:bg-[#EFF5EC]'
               }`}
             >
               <div className="flex items-center gap-3">
-                <History className="w-4 h-4 text-rose-600" aria-hidden="true" />
+                <History className="w-4 h-4 text-[#FD7A2C]" aria-hidden="true" />
                 <span>Blocked Call Log</span>
               </div>
-              <span className="text-xs text-slate-600 font-semibold bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+              <span className="text-xs text-[#18365A] font-bold bg-white px-2 py-0.5 rounded-md border border-[#E5E0C8]">
                 {history.length}
               </span>
             </button>
@@ -709,17 +717,17 @@ export default function App() {
                 setShowWhitelistDrawer(false);
                 setShowHistoryDrawer(false);
               }}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-medium text-sm transition ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-semibold text-sm transition ${
                 showRulesDrawer
-                  ? 'bg-blue-50 text-blue-800 border border-blue-200 font-semibold'
-                  : 'text-slate-700 hover:bg-slate-100'
+                  ? 'bg-[#6A8B5E] text-white shadow-sm'
+                  : 'text-[#18365A] hover:bg-[#EFF5EC]'
               }`}
             >
               <div className="flex items-center gap-3">
-                <Sliders className="w-4 h-4 text-slate-600" aria-hidden="true" />
+                <Sliders className="w-4 h-4 text-[#18365A]" aria-hidden="true" />
                 <span>Screening Rules</span>
               </div>
-              <span className="text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 font-medium">
+              <span className="text-xs text-[#18365A] bg-white px-2 py-0.5 rounded-md border border-[#E5E0C8] font-semibold">
                 &gt;{settings.autoDropThreshold}% Auto
               </span>
             </button>
@@ -727,44 +735,44 @@ export default function App() {
         </div>
 
         {/* Bottom Plan & Profile Section */}
-        <div className="pt-4 border-t border-slate-200 space-y-3">
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+        <div className="pt-4 border-t border-[#E5E0C8] space-y-3">
+          <div className="bg-white border border-[#E5E0C8] rounded-xl p-3.5 shadow-sm">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-                <CreditCard className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" /> Plan
+              <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                <CreditCard className="w-3.5 h-3.5 text-[#6A8B5E]" aria-hidden="true" /> Plan
               </span>
-              <span className="text-[11px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-semibold border border-emerald-200">
+              <span className="text-[11px] bg-[#EFF5EC] text-[#4F6B45] px-2 py-0.5 rounded-full font-bold border border-[#C3D7BC]">
                 Active
               </span>
             </div>
 
-            <div className="text-sm font-bold text-slate-900">Family Guardian</div>
+            <div className="font-display text-sm font-bold text-[#18365A]">Family Guardian</div>
             <div className="text-xs text-slate-500 mt-0.5 mb-3">1 of 3 devices protected</div>
 
             <button
               type="button"
               onClick={() => setShowSubscriptionModal(true)}
-              className="w-full py-2 px-3 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-semibold text-xs transition flex items-center justify-center gap-1.5"
+              className="w-full py-2 px-3 rounded-lg bg-[#FBF9ED] hover:bg-[#EFF5EC] text-[#18365A] border border-[#E5E0C8] font-bold text-xs transition flex items-center justify-center gap-1.5"
             >
               <span>Plan &amp; Server Settings</span>
-              <ExternalLink className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
+              <ExternalLink className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
             </button>
           </div>
 
           <div className="flex items-center justify-between px-1 pt-1 text-xs text-slate-600">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs">
+              <div className="w-8 h-8 rounded-full bg-[#18365A] text-[#FBF9ED] flex items-center justify-center font-bold text-xs">
                 SD
               </div>
               <div>
-                <div className="text-slate-900 font-semibold text-xs">Sarah Davis</div>
+                <div className="text-[#18365A] font-bold text-xs">Sarah Davis</div>
                 <div className="text-[11px] text-slate-500">Primary Caregiver</div>
               </div>
             </div>
             <button
               type="button"
               onClick={() => setShowSubscriptionModal(true)}
-              className="p-2 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition"
+              className="p-2 text-slate-600 hover:text-[#18365A] rounded-lg hover:bg-[#EFF5EC] transition"
               title="Server &amp; Account Settings"
               aria-label="Server and Account Settings"
             >
@@ -775,40 +783,40 @@ export default function App() {
       </aside>
 
       {/* ========================================================= */}
-      {/* MAIN CONTENT AREA                                         */}
+      {/* MAIN CONTENT AREA (Crisp White Main Background)           */}
       {/* ========================================================= */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 bg-white">
         {/* Top Header */}
-        <header className="border-b border-slate-200 px-6 lg:px-8 py-4 flex flex-wrap items-center justify-between gap-4 bg-white sticky top-0 z-20">
+        <header className="border-b border-[#E5E0C8] px-6 lg:px-8 py-4 flex flex-wrap items-center justify-between gap-4 bg-white sticky top-0 z-20">
           <div>
-            <h1 className="text-lg lg:text-xl font-bold text-slate-900 tracking-tight">
+            <h1 className="font-display text-xl lg:text-2xl font-bold text-[#18365A] tracking-tight">
               KinGuard Protection Overview
             </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-600 mt-0.5">
               Unknown calls are screened quietly so Mom isn't disturbed by scam callers
             </p>
           </div>
 
           {/* Demo Simulator Controls (Connected to Android Emulator) */}
           <div className="flex items-center flex-wrap gap-2">
-            <span className="text-xs text-slate-500 font-semibold mr-1">
+            <span className="text-xs text-slate-500 font-bold mr-1">
               Emulator Demo:
             </span>
 
             <button
               type="button"
               onClick={triggerScamSim}
-              className="text-xs px-3 py-2 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 transition flex items-center gap-1.5 font-semibold"
+              className="text-xs px-3 py-2 rounded-lg bg-[#FFF3EB] hover:bg-[#FDE6D6] text-[#C24E0A] border border-[#F9C8A7] transition flex items-center gap-1.5 font-bold"
               title="Dial +1 (800) 582-8888 on Android Emulator (Silenced unless whitelisted)"
             >
-              <PhoneOff className="w-3.5 h-3.5 text-amber-700" aria-hidden="true" />
+              <PhoneOff className="w-3.5 h-3.5 text-[#FD7A2C]" aria-hidden="true" />
               <span>Simulate Suspicious Call (88%)</span>
             </button>
 
             <button
               type="button"
               onClick={triggerHighRiskDrop}
-              className="text-xs px-3 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-300 transition flex items-center gap-1.5 font-semibold"
+              className="text-xs px-3 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-300 transition flex items-center gap-1.5 font-bold"
               title="Dial +1 (888) 555-9999 on Android Emulator (Auto-rejected >90%)"
             >
               <Trash2 className="w-3.5 h-3.5 text-rose-700" aria-hidden="true" />
@@ -818,140 +826,151 @@ export default function App() {
             <button
               type="button"
               onClick={triggerLiveAnswerDrop}
-              className="text-xs px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-300 transition flex items-center gap-1.5 font-semibold"
+              className="text-xs px-3 py-2 rounded-lg bg-[#EDF2F8] hover:bg-[#DCE7F3] text-[#18365A] border border-[#C4D3E3] transition flex items-center gap-1.5 font-bold"
               title="Dial +1 (800) 555-7777 on Android Emulator (Hangs up 5s after answering)"
             >
-              <PhoneIncoming className="w-3.5 h-3.5 text-blue-700" aria-hidden="true" />
+              <PhoneIncoming className="w-3.5 h-3.5 text-[#18365A]" aria-hidden="true" />
               <span>Simulate 5s Answer Drop</span>
             </button>
 
             <button
               type="button"
               onClick={resetQueue}
-              className="text-xs px-3 py-2 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition flex items-center gap-1.5 font-medium"
+              className="text-xs px-3 py-2 rounded-lg bg-[#FBF9ED] hover:bg-[#EFF5EC] text-[#18365A] border border-[#E5E0C8] transition flex items-center gap-1.5 font-semibold"
               title="Reset sample data &amp; hang up active emulator calls"
             >
-              <RefreshCw className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
+              <RefreshCw className="w-3.5 h-3.5 text-slate-600" aria-hidden="true" />
               <span>Reset</span>
             </button>
+
+            <a
+              href="http://localhost:5001"
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs px-3.5 py-2 rounded-lg bg-[#18365A] hover:bg-[#102540] text-[#FBF9ED] transition flex items-center gap-1.5 font-bold shadow-sm"
+              title="Open the Python AI Voice &amp; Server Demo Console on port 5001"
+            >
+              <span>AI Voice Lab (:5001)</span>
+              <ExternalLink className="w-3.5 h-3.5 text-[#FD7A2C]" aria-hidden="true" />
+            </a>
           </div>
         </header>
 
         {/* 2-PANEL WORKSPACE */}
-        <main className="w-full flex-1 px-6 lg:px-8 py-6">
+        <main className="w-full flex-1 px-6 lg:px-8 py-6 bg-white">
           <div className="w-full grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
             {/* ========================================================= */}
             {/* PANEL 1: PROTECTED PHONE SUMMARY                          */}
             {/* ========================================================= */}
             <section
               aria-labelledby="device-summary-heading"
-              className="xl:col-span-5 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm isolated-panel space-y-6"
+              className="xl:col-span-5 bg-white border border-[#E5E0C8] rounded-2xl p-6 shadow-sm isolated-panel space-y-6"
             >
               {/* Panel Header */}
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center justify-between pb-4 border-b border-[#E5E0C8]">
                 <div className="flex items-center gap-3.5">
-                  <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
-                    <Smartphone className="w-6 h-6 text-blue-600" aria-hidden="true" />
+                  <div className="w-12 h-12 rounded-xl bg-[#EFF5EC] border border-[#C3D7BC] flex items-center justify-center shrink-0">
+                    <Smartphone className="w-6 h-6 text-[#4F6B45]" aria-hidden="true" />
                   </div>
                   <div>
-                    <h2 id="device-summary-heading" className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <h2 id="device-summary-heading" className="font-display text-lg font-bold text-[#18365A] flex items-center gap-2">
                       Mom's Galaxy S24
                     </h2>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <p className="text-xs text-slate-600 mt-0.5">
                       Zero-UI Mode • No scam alerts shown on Mom's screen
                     </p>
                   </div>
                 </div>
 
-                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1.5 shrink-0">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#EFF5EC] text-[#4F6B45] border border-[#C3D7BC] flex items-center gap-1.5 shrink-0">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#6A8B5E]" aria-hidden="true" />
                   <span>Protected</span>
                 </span>
               </div>
 
-              {/* 3 Summary Metrics */}
+              {/* 3 Summary Metrics (Secondary Area Fill: Warm Cream & Sage Tint) */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <span className="text-xs text-slate-500 font-medium block">
+                <div className="bg-[#EFF5EC]/70 p-4 rounded-xl border border-[#C3D7BC]">
+                  <span className="text-xs text-[#4F6B45] font-bold block">
                     Interruptions Saved
                   </span>
                   <div className="mt-1">
-                    <SpringCounter value={metrics.wakesPrevented} colorClass="text-slate-900" />
+                    <SpringCounter value={metrics.wakesPrevented} colorClass="text-[#18365A]" />
                   </div>
-                  <span className="text-xs text-emerald-700 font-medium block mt-1">
+                  <span className="text-xs text-[#4F6B45] font-semibold block mt-1">
                     Ringer kept quiet
                   </span>
                 </div>
 
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <span className="text-xs text-slate-500 font-medium block">
+                <div className="bg-[#FFF3EB]/80 p-4 rounded-xl border border-[#F9C8A7]">
+                  <span className="text-xs text-[#C24E0A] font-bold block">
                     Scams Blocked
                   </span>
                   <div className="mt-1">
-                    <SpringCounter value={metrics.threatsScrubbed} colorClass="text-slate-900" />
+                    <SpringCounter value={metrics.threatsScrubbed} colorClass="text-[#18365A]" />
                   </div>
-                  <span className="text-xs text-slate-600 font-medium block mt-1">
+                  <span className="text-xs text-[#C24E0A] font-semibold block mt-1">
                     Hidden from call log
                   </span>
                 </div>
 
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <span className="text-xs text-slate-500 font-medium block">
+                <div className="bg-[#FBF9ED] p-4 rounded-xl border border-[#E5E0C8]">
+                  <span className="text-xs text-slate-600 font-bold block">
                     Screening Speed
                   </span>
                   <div className="mt-1">
-                    <SpringCounter value={metrics.latencyMs} suffix="ms" colorClass="text-slate-900" />
+                    <SpringCounter value={metrics.latencyMs} suffix="ms" colorClass="text-[#18365A]" />
                   </div>
-                  <span className="text-xs text-slate-600 font-medium block mt-1">
+                  <span className="text-xs text-slate-600 font-semibold block mt-1">
                     Instant check
                   </span>
                 </div>
               </div>
 
-              {/* Active Protection Rules Summary */}
-              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
+              {/* Active Protection Rules Summary (Warm Cream Secondary Fill) */}
+              <div className="bg-[#FBF9ED] rounded-xl p-4 border border-[#E5E0C8] space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                  <span className="text-xs font-bold text-[#18365A] uppercase tracking-wider">
                     How Calls Are Handled
                   </span>
                   <button
                     type="button"
                     onClick={() => setShowRulesDrawer(true)}
-                    className="text-xs text-blue-600 hover:text-blue-700 font-semibold"
+                    className="text-xs text-[#4F6B45] hover:text-[#18365A] font-bold"
                   >
                     Edit rules
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between py-2 border-b border-slate-200/80 text-sm">
-                  <span className="text-slate-700">Saved Contacts &amp; Allowed List</span>
-                  <span className="text-emerald-800 text-xs font-semibold px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200">
+                <div className="flex items-center justify-between py-2 border-b border-[#E5E0C8] text-sm">
+                  <span className="text-[#18365A] font-medium">Saved Contacts &amp; Allowed List</span>
+                  <span className="text-[#4F6B45] text-xs font-bold px-2.5 py-1 rounded-md bg-[#EFF5EC] border border-[#C3D7BC]">
                     Always rings through
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between py-2 border-b border-slate-200/80 text-sm">
-                  <span className="text-slate-700">High-Risk Scam (&gt;{settings.autoDropThreshold}% score)</span>
-                  <span className="text-rose-800 text-xs font-semibold px-2.5 py-1 rounded-md bg-rose-50 border border-rose-200">
+                <div className="flex items-center justify-between py-2 border-b border-[#E5E0C8] text-sm">
+                  <span className="text-[#18365A] font-medium">High-Risk Scam (&gt;{settings.autoDropThreshold}% score)</span>
+                  <span className="text-rose-800 text-xs font-bold px-2.5 py-1 rounded-md bg-rose-50 border border-rose-200">
                     Blocked silently
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between py-2 border-b border-slate-200/80 text-sm">
-                  <span className="text-slate-700">
+                <div className="flex items-center justify-between py-2 border-b border-[#E5E0C8] text-sm">
+                  <span className="text-[#18365A] font-medium">
                     Uncertain Caller ({settings.quarantineThreshold}%–{settings.autoDropThreshold}%)
                   </span>
-                  <span className="text-amber-900 text-xs font-semibold px-2.5 py-1 rounded-md bg-amber-50 border border-amber-200">
+                  <span className="text-[#C24E0A] text-xs font-bold px-2.5 py-1 rounded-md bg-[#FFF3EB] border border-[#F9C8A7]">
                     Sent to caregiver review
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between pt-1 text-sm">
-                  <span className="text-slate-700">Repeat Caller Within 5 Minutes</span>
+                  <span className="text-[#18365A] font-medium">Repeat Caller Within 5 Minutes</span>
                   <span
-                    className={`text-xs font-semibold px-2.5 py-1 rounded-md border ${
+                    className={`text-xs font-bold px-2.5 py-1 rounded-md border ${
                       settings.emergencyRepeatBypass
-                        ? 'text-blue-800 bg-blue-50 border-blue-200'
+                        ? 'text-[#18365A] bg-[#EDF2F8] border-[#C4D3E3]'
                         : 'text-slate-600 bg-slate-100 border-slate-300'
                     }`}
                   >
@@ -961,15 +980,15 @@ export default function App() {
               </div>
 
               {/* Reassuring Footer */}
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                <span className="flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
+              <div className="pt-3 border-t border-[#E5E0C8] flex items-center justify-between text-xs text-slate-600">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Lock className="w-3.5 h-3.5 text-[#6A8B5E]" aria-hidden="true" />
                   Synced with Android Emulator &amp; Python Backend
                 </span>
                 <button
                   type="button"
                   onClick={() => setShowWhitelistDrawer(true)}
-                  className="text-blue-600 hover:text-blue-700 font-semibold"
+                  className="text-[#4F6B45] hover:text-[#18365A] font-bold"
                 >
                   {whitelist.length} allowed contacts &rarr;
                 </button>
@@ -981,25 +1000,25 @@ export default function App() {
             {/* ========================================================= */}
             <section
               aria-labelledby="review-queue-heading"
-              className="xl:col-span-7 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm isolated-panel flex flex-col justify-between space-y-5"
+              className="xl:col-span-7 bg-white border border-[#E5E0C8] rounded-2xl p-6 shadow-sm isolated-panel flex flex-col justify-between space-y-5"
             >
               <div className="space-y-4">
-                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div className="flex items-center justify-between pb-4 border-b border-[#E5E0C8]">
                   <div className="flex items-center gap-3.5">
-                    <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0">
-                      <AlertTriangle className="w-6 h-6 text-amber-600" aria-hidden="true" />
+                    <div className="w-12 h-12 rounded-xl bg-[#FFF3EB] border border-[#F9C8A7] flex items-center justify-center shrink-0">
+                      <AlertTriangle className="w-6 h-6 text-[#FD7A2C]" aria-hidden="true" />
                     </div>
                     <div>
-                      <h2 id="review-queue-heading" className="text-lg font-bold text-slate-900">
+                      <h2 id="review-queue-heading" className="font-display text-lg font-bold text-[#18365A]">
                         Calls Waiting for Your Review
                       </h2>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="text-xs text-slate-600 mt-0.5">
                         These unknown callers were silenced so Mom wasn't bothered. Choose whether to allow or block them.
                       </p>
                     </div>
                   </div>
 
-                  <span className="text-xs font-semibold px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-200 shrink-0">
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#FFF3EB] text-[#C24E0A] border border-[#F9C8A7] shrink-0">
                     {quarantineQueue.length} Waiting
                   </span>
                 </div>
@@ -1007,10 +1026,10 @@ export default function App() {
                 {/* Review Cards */}
                 <div className="space-y-4">
                   {quarantineQueue.length === 0 ? (
-                    <div className="text-center py-12 bg-slate-50 rounded-xl border border-slate-200 p-6">
-                      <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto mb-2" aria-hidden="true" />
-                      <div className="text-base font-bold text-slate-900">You're all caught up</div>
-                      <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
+                    <div className="text-center py-12 bg-[#FBF9ED] rounded-xl border border-[#E5E0C8] p-6">
+                      <CheckCircle2 className="w-10 h-10 text-[#6A8B5E] mx-auto mb-2" aria-hidden="true" />
+                      <div className="font-display text-base font-bold text-[#18365A]">You're all caught up</div>
+                      <p className="text-sm text-slate-600 mt-1 max-w-md mx-auto">
                         No suspicious calls are waiting for review right now.
                       </p>
                     </div>
@@ -1018,19 +1037,19 @@ export default function App() {
                     quarantineQueue.map((call) => (
                       <div
                         key={call.id}
-                        className="p-5 rounded-xl border border-slate-200 bg-slate-50/70 hover:border-slate-300 transition space-y-4"
+                        className="p-5 rounded-xl border border-[#E5E0C8] bg-[#FBF9ED] hover:border-[#C3D7BC] transition space-y-4"
                       >
                         <div className="flex items-center justify-between flex-wrap gap-4">
                           <div>
                             <div className="flex items-center gap-2.5 flex-wrap">
-                              <span className="text-lg font-bold text-slate-900">
+                              <span className="font-display text-lg font-bold text-[#18365A]">
                                 {call.callerId}
                               </span>
-                              <span className="text-xs px-2.5 py-0.5 rounded-md font-medium bg-amber-100/80 text-amber-900 border border-amber-300">
+                              <span className="text-xs px-2.5 py-0.5 rounded-md font-bold bg-[#FFF3EB] text-[#C24E0A] border border-[#F9C8A7]">
                                 {call.stirShaken}
                               </span>
                             </div>
-                            <div className="text-xs text-slate-500 mt-1">
+                            <div className="text-xs text-slate-600 font-medium mt-1">
                               {call.origin} • {call.timestamp}
                             </div>
                           </div>
@@ -1042,7 +1061,7 @@ export default function App() {
                               <button
                                 type="button"
                                 onClick={() => handleAction(call.id, 'whitelist')}
-                                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition flex items-center gap-1.5 font-semibold text-xs shadow-sm"
+                                className="px-3.5 py-2 bg-[#6A8B5E] hover:bg-[#4F6B45] text-white rounded-lg transition flex items-center gap-1.5 font-bold text-xs shadow-sm"
                                 title="Allow this number to ring Mom's phone in the future"
                               >
                                 <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
@@ -1052,7 +1071,7 @@ export default function App() {
                               <button
                                 type="button"
                                 onClick={() => handleAction(call.id, 'block')}
-                                className="px-3.5 py-2 bg-white hover:bg-rose-50 text-rose-700 rounded-lg border border-rose-300 transition flex items-center gap-1.5 font-semibold text-xs"
+                                className="px-3.5 py-2 bg-white hover:bg-rose-50 text-rose-700 rounded-lg border border-rose-300 transition flex items-center gap-1.5 font-bold text-xs"
                                 title="Block this number permanently"
                               >
                                 <XCircle className="w-4 h-4 text-rose-600" aria-hidden="true" />
@@ -1063,13 +1082,13 @@ export default function App() {
                         </div>
 
                         {/* Reason & Voicemail Transcript */}
-                        <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-2">
+                        <div className="bg-white p-4 rounded-xl border border-[#E5E0C8] space-y-2">
                           <div className="flex items-center justify-between flex-wrap gap-2">
-                            <span className="text-xs font-semibold text-slate-700">
-                              Why this call was held: <span className="font-normal text-slate-600">{call.reason}</span>
+                            <span className="text-xs font-bold text-[#18365A]">
+                              Why this call was held: <span className="font-medium text-slate-700">{call.reason}</span>
                             </span>
                           </div>
-                          <p className="text-sm text-slate-700 italic border-t border-slate-100 pt-2 leading-relaxed">
+                          <p className="text-sm text-[#18365A] italic border-t border-[#FBF9ED] pt-2 leading-relaxed">
                             "{call.transcript}"
                           </p>
                         </div>
@@ -1079,7 +1098,7 @@ export default function App() {
                           {call.tags.map((tag, idx) => (
                             <span
                               key={idx}
-                              className="px-2.5 py-0.5 text-xs rounded-md bg-white text-slate-600 border border-slate-200 font-medium"
+                              className="px-2.5 py-0.5 text-xs rounded-md bg-white text-[#18365A] border border-[#E5E0C8] font-semibold"
                             >
                               {tag}
                             </span>
@@ -1092,9 +1111,9 @@ export default function App() {
               </div>
 
               {/* Footer */}
-              <div className="text-xs text-slate-500 pt-4 border-t border-slate-100 flex items-center justify-between">
+              <div className="text-xs text-slate-600 pt-4 border-t border-[#E5E0C8] flex items-center justify-between">
                 <span>Approving a number syncs to Python &amp; the Android Emulator so future calls ring right through.</span>
-                <span className="font-semibold text-slate-700">
+                <span className="font-bold text-[#4F6B45]">
                   {metrics.whitelistedTotal} Allowed Total
                 </span>
               </div>

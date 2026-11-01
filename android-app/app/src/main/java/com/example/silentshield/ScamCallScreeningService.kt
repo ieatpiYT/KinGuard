@@ -68,7 +68,7 @@ class ScamCallScreeningService : CallScreeningService() {
                 return cursor.moveToFirst()
             }
         } catch (e: Exception) {
-            Log.e("SilentShield", "Error checking contacts", e)
+            Log.e("KinGuard", "Error checking contacts", e)
         }
         return false
     }
@@ -79,11 +79,21 @@ class ScamCallScreeningService : CallScreeningService() {
             return
         }
 
+        val prefs = getSharedPreferences("shield_prefs", Context.MODE_PRIVATE)
+        // Reset stale drop-after-answer demo flags on every new incoming call
+        prefs.edit().putBoolean("drop_after_answer", false).apply()
+
+        if (prefs.getBoolean("demo_deactivated", false)) {
+            Log.d("KinGuard", "Protection disabled in UI (demo_deactivated=true) — allowing call unscreened")
+            applyCallAction(callDetails, "allow")
+            return
+        }
+
         val rawNumber = callDetails.handle?.schemeSpecificPart ?: ""
 
         // 1. Deterministic Contacts Book Passthrough (0ms)
         if (isNumberInContacts(this, rawNumber)) {
-            Log.d("SilentShield", "Allowed: Number in device contacts")
+            Log.d("KinGuard", "Allowed: Number in device contacts")
             applyCallAction(callDetails, "allow")
             return
         }
@@ -92,16 +102,14 @@ class ScamCallScreeningService : CallScreeningService() {
         val tenDigitNumber = normalizeTenDigits(rawNumber)
         val verificationStatus = callDetails.callerNumberVerificationStatus
 
-        Log.d("SilentShield", "Incoming call from: $rawNumber (norm=$tenDigitNumber), STIR/SHAKEN: $verificationStatus")
-
-        val prefs = getSharedPreferences("shield_prefs", Context.MODE_PRIVATE)
+        Log.d("KinGuard", "Incoming call from: $rawNumber (norm=$tenDigitNumber), STIR/SHAKEN: $verificationStatus")
 
         // Check synced contacts whitelist
         val contactsWhitelist = prefs.getStringSet("whitelist", emptySet()) ?: emptySet()
         if (normalizedNumber.isNotEmpty() &&
             (contactsWhitelist.contains(normalizedNumber) || contactsWhitelist.contains(tenDigitNumber))
         ) {
-            Log.d("SilentShield", "Allowed: In contacts whitelist")
+            Log.d("KinGuard", "Allowed: In contacts whitelist")
             applyCallAction(callDetails, "allow")
             return
         }
@@ -131,7 +139,7 @@ class ScamCallScreeningService : CallScreeningService() {
 
             withContext(Dispatchers.Main) {
                 if (finalAction == "drop_after_answer") {
-                    Log.d("SilentShield", "Allowed initially, flagged for drop 5 seconds after answering...")
+                    Log.d("KinGuard", "Allowed initially, flagged for drop 5 seconds after answering...")
                     prefs.edit().putBoolean("drop_after_answer", true).apply()
                     applyCallAction(callDetails, "allow")
                 } else {
@@ -205,13 +213,13 @@ class ScamCallScreeningService : CallScreeningService() {
 
                         val action = json.optString("action", "")
                         if (action.isNotEmpty()) {
-                            Log.d("SilentShield", "Backend ($url) returned action: $action")
+                            Log.d("KinGuard", "Backend ($url) returned action: $action")
                             return action
                         }
                     }
                 }
             } catch (e: Exception) {
-                Log.d("SilentShield", "Endpoint $url unreachable, trying fallback...")
+                Log.d("KinGuard", "Endpoint $url unreachable, trying fallback...")
             }
         }
         return null
@@ -220,7 +228,7 @@ class ScamCallScreeningService : CallScreeningService() {
     private fun syncListsFromBackend(json: JSONObject) {
         if (json.optBoolean("clearRecentCache", false)) {
             getSharedPreferences("recent_calls", Context.MODE_PRIVATE).edit().clear().apply()
-            Log.d("SilentShield", "Cleared local recent_calls 5-minute cache per server reset")
+            Log.d("KinGuard", "Cleared local recent_calls 5-minute cache per server reset")
         }
 
         val prefs = getSharedPreferences("shield_prefs", Context.MODE_PRIVATE)
@@ -263,7 +271,7 @@ class ScamCallScreeningService : CallScreeningService() {
         // 1. Check cached Caregiver Whitelist
         val caregiverWhitelist = prefs.getStringSet("caregiver_whitelist", emptySet()) ?: emptySet()
         if (tenDigitNumber.isNotEmpty() && caregiverWhitelist.contains(tenDigitNumber)) {
-            Log.d("SilentShield", "Allowed (Offline): In caregiver whitelist")
+            Log.d("KinGuard", "Allowed (Offline): In caregiver whitelist")
             return "allow"
         }
 
@@ -278,7 +286,7 @@ class ScamCallScreeningService : CallScreeningService() {
         }
 
         if (isRepeatCaller) {
-            Log.d("SilentShield", "Allowed (Offline): Repeat caller within 5m")
+            Log.d("KinGuard", "Allowed (Offline): Repeat caller within 5m")
             return "allow"
         }
 
@@ -287,7 +295,9 @@ class ScamCallScreeningService : CallScreeningService() {
         }
 
         if (normalizedNumber.endsWith("8888")) {
-            return "silence"
+            // Reject suspicious calls cleanly so Telecom drops them immediately
+            // and prevents the phone or voicemail from picking them up automatically when screen is off
+            return "reject"
         }
 
         return "allow"

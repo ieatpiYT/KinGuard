@@ -1,6 +1,6 @@
 # KinGuard: 7-Minute Demo & Testing Master Plan
 
-This plan is optimized for a **tight, professional 7-minute presentation** showing the side-by-side Android Emulator, the **KinGuard** Caregiver Dashboard, and the Python AI Voice & Transcript Engine (`audio_demo.py` + `app.py`).
+This plan is optimized for a **tight, professional 7-minute presentation** showing the side-by-side Android Emulator, the **KinGuard** Caregiver Dashboard (`:5173`), and the browser-based **KinGuard AI Voice Lab Console (`:5001`)**—with **zero terminal windows needed on screen**.
 
 ---
 
@@ -8,30 +8,28 @@ This plan is optimized for a **tight, professional 7-minute presentation** showi
 
 | Item | Step | Verified? |
 | :--- | :--- | :---: |
-| **1. Add Scam Audio** | Drop your YouTube scam `.mp3` or `.wav` clip into `python-backend/samples/` (or run `.\generate_samples.ps1` inside `python-backend/` to generate 3 `.wav` files). | [ ] |
-| **2. Python Backend** | In Terminal 1 (`python-backend/`), ensure `GROQ_API_KEY` is in `.env` and run `.\venv\Scripts\python app.py` (listens on `:5001`). | [ ] |
-| **3. Dashboard + Bridge** | In Terminal 2 (`react-dashboard/`), run `npm run dev` (opens `http://localhost:5173` and bridges to `:5001` + ADB). | [ ] |
-| **4. Emulator Setup** | Open Android Studio, run **KinGuard** on the emulator, and float the emulator window to the right half of your screen. | [ ] |
+| **1. Start Python Server** | In `python-backend/`, ensure `GROQ_API_KEY` is in `.env` and run `.\venv\Scripts\python app.py` (serves API + Web Console at `http://localhost:5001`). | [ ] |
+| **2. Start Dashboard** | In `react-dashboard/`, run `npm run dev` (serves Caregiver Dashboard at `http://localhost:5173`). | [ ] |
+| **3. Upload/Verify Audio** | Open `http://localhost:5001` in a browser tab. Verify the `/samples` dropdown has the generated `.wav` files or upload your YouTube scam `.mp3` directly on that page. | [ ] |
+| **4. Emulator Setup** | Open Android Studio, run **KinGuard** on the emulator, and float the emulator window to the right third of your screen. | [ ] |
 | **5. Screening Role** | On the emulator, ensure the green box says **"KinGuard Active (Zero-UI Mode)"**. | [ ] |
 | **6. Contacts Clean** | In the emulator Contacts app, ensure your test contact does **not** end in `8888`, `9999`, or `7777`. | [ ] |
 | **7. Reset Baseline** | Click **"Reset"** in the top-right of the KinGuard dashboard to start with the clean baseline. | [ ] |
 
 ---
 
-## 2. Screen Layout Staging
+## 2. Screen Layout Staging (No Terminal Required!)
 
-Arrange your desktop into a side-by-side layout:
+Arrange your desktop into a clean two-window layout:
 
 ```
-+------------------------------------------+-----------------------+
-|  LEFT (65% Width): KinGuard Dashboard    | RIGHT (35% Width):   |
-|  - Real-time review queue & transcripts  | Android Emulator      |
-|  - Blocked call log & Allowed contacts   | (Mom's Galaxy S24)    |
-|  - Simulator triggers at the top         | Screen stays dark /   |
-|                                          | ringer silenced       |
-+------------------------------------------+-----------------------+
-|  BOTTOM / OVERLAY: Terminal for python app.py & audio_demo.py    |
-+------------------------------------------------------------------+
++---------------------------------------------------+-----------------------+
+|  LEFT (65% Width): Browser Window                 | RIGHT (35% Width):    |
+|  - Tab 1: KinGuard Caregiver Dashboard (:5173)    | Android Emulator      |
+|  - Tab 2: KinGuard AI Voice Lab (:5001)           | (Mom's Galaxy S24)    |
+|    (Or click "AI Voice Lab (:5001)" in header)    | Screen stays dark /   |
+|                                                   | ringer silenced       |
++---------------------------------------------------+-----------------------+
 ```
 
 ---
@@ -41,7 +39,7 @@ Arrange your desktop into a side-by-side layout:
 ```mermaid
 flowchart LR
     A["0:00 - 0:45<br/>Hook & Thesis"] --> B["0:45 - 2:45<br/>Live Screening Cases"]
-    B --> C["2:45 - 5:15<br/>Live Audio Transcription Demo"]
+    B --> C["2:45 - 5:15<br/>AI Voice Lab (:5001)"]
     C --> D["5:15 - 6:30<br/>Safety & Roadmap"]
     D --> E["6:30 - 7:00<br/>Buffer / Wrap-Up"]
 ```
@@ -63,8 +61,8 @@ flowchart LR
 
 #### Case 2: Ambiguous Threat $\rightarrow$ Caregiver Triage $\rightarrow$ Redial Test — [1:25 – 2:15]
 * **Action 1:** Click **"Simulate Suspicious Call (88%)"** (dials `+1 800-582-8888`).
-* **Visual:** The phone is silenced. Python scores the call via Groq and logs `INFO evaluate +18005828888 -> silence`. The card immediately appears on the website under **"Calls Waiting for Your Review"**.
-* **Action 2:** Click **"Allow Caller"** on the dashboard (triggers `POST /resolve` on the Python server).
+* **Visual:** The phone is silenced. The card immediately appears on the website under **"Calls Waiting for Your Review"**.
+* **Action 2:** Click **"Allow Caller"** on the dashboard.
 * **Action 3:** Click **"Simulate Suspicious Call (88%)"** a second time.
 * **Visual on Emulator:** The phone **now rings out loud!**
 
@@ -75,22 +73,18 @@ flowchart LR
 
 ---
 
-### [2:45 – 5:15] Act III: Live Audio Transcription & Scam Detection (`audio_demo.py`)
-*(Focus on your Python terminal on the bottom/left while keeping the KinGuard website & Emulator visible)*
+### [2:45 – 5:15] Act III: Live Audio Transcription & Scam Detection (`http://localhost:5001`)
+*(Click the dark **"AI Voice Lab (:5001)"** button in the top-right of the KinGuard dashboard to switch to the Python Server Web Console)*
 
-1. **Optional Stage Set:** Click **"Simulate 5s Answer Drop"** (or dial `+1 800-555-7777` on the emulator) so a call is actively ringing/connected on Mom's phone.
-2. **Run the Audio Pipeline:** In your `python-backend` terminal, run:
-   ```powershell
-   .\venv\Scripts\python audio_demo.py samples\your_scam_clip.mp3
-   ```
-   *(Or simply `.\venv\Scripts\python audio_demo.py` to auto-run the first audio file inside `samples/`)*
-3. **What Happens Live on Screen:**
-   * **Step `[1/4]` (Audio Ingest):** Loads your scam audio file (and plays it out loud if `.wav`).
-   * **Step `[2/4]` (Groq Whisper `whisper-large-v3-turbo`):** Transcribes the entire scam recording in **~300ms** and prints the verbatim spoken transcript in your terminal.
-   * **Step `[3/4]` (Groq LLM `openai/gpt-oss-20b`):** Scores the transcript's semantic intent in **~280ms**, printing the **Risk Score (e.g. 97%)**, **AI Decision (`REJECT & SEVER CALL`)**, **Threat Summary**, and **Detected Tactics (`Authority Impersonation`, `Urgency / Arrest Threat`, `Payment Demand`)**.
-   * **Step `[4/4]` (Live Frontend & Emulator Sync):**
-     * Look at the **KinGuard Caregiver Dashboard**: A red toast alert pops up, and a card appears on the main screen displaying the **exact verbatim transcript from your YouTube audio clip**, the **Groq LLM reason**, the **Detected Tactics badges**, and the **Risk Score Ring**!
-     * Look at the **Android Emulator**: Any active call on the emulator is immediately severed via ADB!
+1. **Select & Play Scam Audio:**
+   * Choose your YouTube scam clip (or `irs_scam_call.wav`) from the **`/samples` dropdown**.
+   * Leave **"Play audio when analyzing"** checked so the judges hear the scammer speaking.
+2. **Click "Transcribe & Evaluate Call Audio":**
+   * **Step 1 (Groq Whisper `whisper-large-v3-turbo`):** Point to the live transcription latency badge (`~300ms`) and the verbatim spoken transcript box that appears on the right.
+   * **Step 2 (Groq LLM `openai/gpt-oss-20b`):** Point to the **Scam Confidence Score (`97%`)**, the **`AUTO-BLOCK & SEVER CALL`** verdict banner, the AI reasoning, and the detected tactic tags (`Authority Impersonation`, `Urgency / Arrest Threat`, `Payment Demand`).
+   * **Step 3 (Live Server Log at Bottom):** Point to the dark **Live Backend Server Log (`:5001`)** panel at the bottom of the webpage, showing all real-time `METADATA`, `VOICE_AI`, and `RESOLVE` evaluations handled by Flask.
+3. **Switch Back to Caregiver Dashboard Tab (`:5173`):**
+   * Show the judges that the exact YouTube transcript, Groq AI reasoning, and Risk Score Ring have **automatically synced** onto the main Caregiver Dashboard!
 
 ---
 

@@ -5,16 +5,25 @@
 @layer base {
   :root {
     color-scheme: light;
+    --kg-sage: #6A8B5E;
+    --kg-navy: #18365A;
+    --kg-orange: #FD7A2C;
+    --kg-cream: #FBF9ED;
   }
 
   html, body {
     margin: 0;
     padding: 0;
-    background-color: #f8fafc;
-    color: #0f172a;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #ffffff;
+    color: #18365A;
+    font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: "Fredoka", "Plus Jakarta Sans", sans-serif;
+    letter-spacing: 0.01em;
   }
 }
 
@@ -34,17 +43,17 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #c3d7bc;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #6A8B5E;
 }
 
 .scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-color: #c3d7bc transparent;
 }
 
 @media (forced-colors: active) {

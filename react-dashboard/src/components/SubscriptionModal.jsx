@@ -71,21 +71,21 @@ export default function SubscriptionModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="subscription-title">
       <div
         onClick={onClose}
-        className="fixed inset-0 bg-slate-900/40"
+        className="fixed inset-0 bg-[#18365A]/40"
       />
 
-      <div className="bg-white border border-slate-200 rounded-2xl max-w-xl w-full p-6 shadow-xl space-y-5 relative my-6 z-10 isolated-panel">
+      <div className="bg-white border border-[#E5E0C8] rounded-2xl max-w-xl w-full p-6 shadow-xl space-y-5 relative my-6 z-10 isolated-panel">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+        <div className="flex items-center justify-between pb-4 border-b border-[#E5E0C8]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center">
-              <CreditCard className="w-5 h-5 text-blue-600" aria-hidden="true" />
+            <div className="w-10 h-10 rounded-xl bg-[#EFF5EC] border border-[#C3D7BC] flex items-center justify-center">
+              <CreditCard className="w-5 h-5 text-[#4F6B45]" aria-hidden="true" />
             </div>
             <div>
-              <h3 id="subscription-title" className="text-lg font-bold text-slate-900">
+              <h3 id="subscription-title" className="font-display text-lg font-bold text-[#18365A]">
                 Plan &amp; Server Settings
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-600">
                 Manage your KinGuard family plan and Python screening server connection
               </p>
             </div>
@@ -93,7 +93,7 @@ export default function SubscriptionModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-900 transition"
+            className="p-2 hover:bg-[#FBF9ED] rounded-lg text-slate-500 hover:text-[#18365A] transition"
             aria-label="Close modal"
           >
             <X className="w-5 h-5" aria-hidden="true" />
@@ -102,7 +102,7 @@ export default function SubscriptionModal({
 
         {/* Plan Comparison */}
         <div className="space-y-2.5">
-          <span className="text-xs font-bold text-slate-600 uppercase tracking-wider block">
+          <span className="text-xs font-bold text-[#18365A] uppercase tracking-wider block">
             Protection Plans
           </span>
 
@@ -111,13 +111,13 @@ export default function SubscriptionModal({
               onClick={() => handleTierChange('solo')}
               className={`p-3.5 rounded-xl border cursor-pointer transition ${
                 selectedTier === 'solo'
-                  ? 'bg-blue-50/60 border-blue-400'
-                  : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                  ? 'bg-[#EFF5EC]/80 border-[#6A8B5E]'
+                  : 'bg-[#FBF9ED] border-[#E5E0C8] hover:border-[#C3D7BC]'
               }`}
             >
-              <div className="font-bold text-slate-900 text-sm">Single Phone</div>
-              <div className="text-slate-700 font-semibold text-xs mt-0.5">$7.99 / mo</div>
-              <p className="text-xs text-slate-500 mt-1">
+              <div className="font-display font-bold text-[#18365A] text-sm">Single Phone</div>
+              <div className="text-[#4F6B45] font-bold text-xs mt-0.5">$7.99 / mo</div>
+              <p className="text-xs text-slate-600 mt-1">
                 Protects 1 phone with email alerts.
               </p>
             </div>
@@ -126,18 +126,18 @@ export default function SubscriptionModal({
               onClick={() => handleTierChange('family')}
               className={`p-3.5 rounded-xl border cursor-pointer transition ${
                 selectedTier === 'family'
-                  ? 'bg-blue-50/60 border-blue-400'
-                  : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                  ? 'bg-[#EFF5EC]/80 border-[#6A8B5E]'
+                  : 'bg-[#FBF9ED] border-[#E5E0C8] hover:border-[#C3D7BC]'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-900 text-sm">Family</span>
-                <span className="text-[10px] bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded font-semibold border border-emerald-200">
+                <span className="font-display font-bold text-[#18365A] text-sm">Family</span>
+                <span className="text-[10px] bg-white text-[#4F6B45] px-1.5 py-0.5 rounded font-bold border border-[#C3D7BC]">
                   Current
                 </span>
               </div>
-              <div className="text-slate-700 font-semibold text-xs mt-0.5">$14.99 / mo</div>
-              <p className="text-xs text-slate-500 mt-1">
+              <div className="text-[#4F6B45] font-bold text-xs mt-0.5">$14.99 / mo</div>
+              <p className="text-xs text-slate-600 mt-1">
                 Up to 3 phones &amp; instant text alerts.
               </p>
             </div>
@@ -146,13 +146,13 @@ export default function SubscriptionModal({
               onClick={() => handleTierChange('enterprise')}
               className={`p-3.5 rounded-xl border cursor-pointer transition ${
                 selectedTier === 'enterprise'
-                  ? 'bg-blue-50/60 border-blue-400'
-                  : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                  ? 'bg-[#EFF5EC]/80 border-[#6A8B5E]'
+                  : 'bg-[#FBF9ED] border-[#E5E0C8] hover:border-[#C3D7BC]'
               }`}
             >
-              <div className="font-bold text-slate-900 text-sm">Senior Care</div>
-              <div className="text-slate-700 font-semibold text-xs mt-0.5">$49.99 / mo</div>
-              <p className="text-xs text-slate-500 mt-1">
+              <div className="font-display font-bold text-[#18365A] text-sm">Senior Care</div>
+              <div className="text-[#4F6B45] font-bold text-xs mt-0.5">$49.99 / mo</div>
+              <p className="text-xs text-slate-600 mt-1">
                 Unlimited phones for care communities.
               </p>
             </div>
@@ -160,11 +160,11 @@ export default function SubscriptionModal({
         </div>
 
         {/* Backend Server Connection Config */}
-        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+        <div className="p-4 rounded-xl bg-[#FBF9ED] border border-[#E5E0C8] space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Server className="w-4 h-4 text-blue-600" aria-hidden="true" />
-              <span className="text-xs font-bold text-slate-800">
+              <Server className="w-4 h-4 text-[#6A8B5E]" aria-hidden="true" />
+              <span className="text-xs font-bold text-[#18365A]">
                 Python Screening Server URL
               </span>
             </div>
@@ -180,13 +180,13 @@ export default function SubscriptionModal({
               onChange={(e) => setBackendUrl(e.target.value)}
               placeholder="http://localhost:5001"
               aria-label="Python server URL"
-              className="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono placeholder-slate-400 focus:outline-none focus:border-blue-600"
+              className="flex-1 bg-white border border-[#E5E0C8] rounded-lg px-3 py-2 text-xs text-[#18365A] font-mono placeholder-slate-400 focus:outline-none focus:border-[#6A8B5E]"
             />
             <button
               type="button"
               onClick={handlePingBackend}
               disabled={pingStatus?.state === 'pinging'}
-              className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shrink-0"
+              className="px-3.5 py-2 bg-[#18365A] hover:bg-[#102540] disabled:bg-slate-300 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0"
             >
               {pingStatus?.state === 'pinging' ? (
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
@@ -198,19 +198,19 @@ export default function SubscriptionModal({
           </div>
 
           {pingStatus && (
-            <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" aria-hidden="true" />
+            <div className="p-2.5 rounded-lg bg-[#EFF5EC] border border-[#C3D7BC] text-[#4F6B45] text-xs font-semibold flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-[#6A8B5E] shrink-0" aria-hidden="true" />
               <span>{pingStatus.message}</span>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end pt-3 border-t border-slate-200">
+        <div className="flex items-center justify-end pt-3 border-t border-[#E5E0C8]">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition"
+            className="px-5 py-2 rounded-lg bg-[#6A8B5E] hover:bg-[#4F6B45] text-white text-xs font-bold transition"
           >
             Done
           </button>
