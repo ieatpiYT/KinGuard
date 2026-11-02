@@ -2,6 +2,8 @@
 
 # 🛡️ KinGuard
 
+Eric, Luke, Mukunth
+
 ### Zero-UI, on-device scam call interception with a delegated caregiver network.
 
 *The vulnerable user never has to make the security decision. A trusted family member does.*
