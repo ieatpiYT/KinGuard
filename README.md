@@ -1,104 +1,104 @@
-<div align="center">
-
-# 🛡️ KinGuard
+🛡️ KinGuard
 
 Eric, Luke, Mukunth
 
-### Zero-UI, on-device scam call interception with a delegated caregiver network.
+Zero-UI scam call screening with a delegated caregiver network.
 
-*The vulnerable user never has to make the security decision. A trusted family member does.*
+The vulnerable user never has to make the security decision. A trusted family member does.
 
-![Android](https://img.shields.io/badge/Android-Kotlin-3DDC84?logo=android&logoColor=white)
-![Backend](https://img.shields.io/badge/Backend-Flask-000000?logo=flask&logoColor=white)
-![Dashboard](https://img.shields.io/badge/Dashboard-React%20%2B%20Vite-61DAFB?logo=react&logoColor=black)
-![LLM](https://img.shields.io/badge/LLM-Groq-F55036)
-![Status](https://img.shields.io/badge/status-hackathon%20MVP-orange)
+!Android !Backend !Dashboard !LLM !Status
 
-</div>
+📖 Table of Contents
+The Problem
+The Solution
+How It Works
+Architecture
+Decision Logic
+Repository Layout
+API Reference
+Quick Start
+Live Demo Script
+Project Status
+Known Limitations
+Roadmap
+Team
+🚨 The Problem
 
----
+Elder fraud is a growing problem, and many scams begin with an unsolicited phone call. Attackers use high-pressure social engineering, tech-support fraud, impersonation, and AI voice cloning ("grandparent scams") to pressure older adults into sending money or revealing sensitive information.
 
-## 📖 Table of Contents
+Existing tools like Truecaller, Hiya, and Google Call Screen help identify suspicious callers, but they have limitations:
 
-- [The Problem](#-the-problem)
-- [The Solution](#-the-solution)
-- [How It Works](#-how-it-works)
-- [Architecture](#-architecture)
-- [Decision Logic](#-decision-logic)
-- [Repository Layout](#-repository-layout)
-- [API Reference](#-api-reference)
-- [Quick Start](#-quick-start)
-- [Live Demo Script](#-live-demo-script)
-- [Project Status](#-project-status)
-- [Roadmap](#-roadmap)
-- [Team](#-team)
+Failure	Why it matters
+Static database failure	Blocklists and caller verification systems provide useful signals, but they cannot reliably determine what a caller intends. Scammers can spoof numbers and use previously unseen numbers.
+Cognitive overload	Live-transcript screeners can present a stressful manipulation attempt to the user and ask them to judge it in real time. This places the burden of security on the person being targeted.
 
----
+The problem isn't just identifying scam calls. It's making sure vulnerable people don't have to make difficult security decisions while someone is actively manipulating them.
 
-## 🚨 The Problem
+💡 The Solution
 
-Elder fraud is surging, and most of it starts with an unsolicited phone call. Attackers use high-pressure social engineering, tech-support fraud, and AI voice cloning ("grandparent scams") to pressure older adults into sending money.
+KinGuard removes the vulnerable user from the security decision-making process.
 
-Existing tools like Truecaller, Hiya, and Google Call Screen fall short for two reasons:
+Unknown calls are screened before the phone rings. Calls classified as high-risk can be rejected, low-risk calls are allowed through, and ambiguous calls are silenced and sent to a caregiver dashboard for review.
 
-| Failure | Why it matters |
-|---|---|
-| **Static database failure** | Blocklists and STIR/SHAKEN only tell you where a call came from, not what the caller wants. Scammers spoof fresh numbers constantly. |
-| **Cognitive overload** | Live-transcript screeners show a high-stress manipulation attempt on the user's screen and ask them to judge it in real time. That is exactly the fight the user is least equipped to win. |
+A trusted family member can review flagged calls and choose to whitelist or block a number.
 
-## 💡 The Solution
+Persona	Experience
+👵 Protected User	Minimal interaction after initial setup and permissions. Known and trusted callers can be allowed through, while suspicious calls are screened automatically.
+🧑‍💻 Caregiver	A web-based "Mission Control" dashboard with flagged calls, AI-generated risk assessments, explanations, and Whitelist / Block actions.
 
-KinGuard **removes the vulnerable user from the security loop entirely.**
+MVP vs. Production Vision
 
-Unknown calls are screened *before the phone rings*. Clear threats are dropped silently. Ambiguous calls are muted and sent to a **web dashboard run by a trusted caregiver**, who can whitelist or block the number with one click.
-
-| Persona | Experience |
-|---|---|
-| 👵 **Protected User** | Zero UI. One-time permission setup, then invisible. Known contacts ring normally, threats never wake the screen. |
-| 🧑‍💻 **Caregiver** | A "Mission Control" web dashboard with a queue of flagged calls, AI reasoning, and one-click **Whitelist** / **Block**. |
-
----
-
-## ⚙️ How It Works
-
-```mermaid
+Current MVP: Android call screening with cloud-assisted scam-risk analysis through a Flask backend and Groq LLM.
+Production vision: Fully on-device inference, minimizing the transmission of call metadata and reducing dependence on network connectivity.
+⚙️ How It Works
+mermaid
 sequenceDiagram
     autonumber
     participant Caller as 📞 Unknown Caller
-    participant Phone as 📱 Android App<br/>(CallScreeningService)
+    participant Phone as 📱 Android App (CallScreeningService)
     participant API as 🧠 Flask Backend
     participant LLM as ⚡ Groq LLM
     participant Dash as 🖥️ Caregiver Dashboard
 
-    Caller->>Phone: Incoming call (before it rings)
+    Caller->>Phone: Incoming call (before ringing)
     Phone->>API: POST /evaluate (number, verification status)
+
     API->>API: Check whitelist, blocklist, repeat-caller cache
-    alt Repeat caller within 5 min
-        API-->>Phone: allow (emergency bypass)
+
+    alt Whitelisted number
+        API-->>Phone: allow
+    else Blocked number
+        API-->>Phone: reject
+    else Repeat caller within 5 minutes
+        API->>API: Apply repeat-caller prioritization
     else New caller
-        API->>LLM: Score scam likelihood (2s timeout)
-        LLM-->>API: confidence + reason
-        alt over 90% scam
+        API->>LLM: Score scam risk (2s timeout)
+        LLM-->>API: Risk score + explanation
+
+        alt Risk score above 90%
             API-->>Phone: reject
-        else under 50% scam
+        else Risk score below 50%
             API-->>Phone: allow
-        else 50 to 90% ambiguous
+        else Risk score between 50% and 90%
             API-->>Phone: silence
-            API-)Dash: Log to flagged queue (background thread)
+            API-)Dash: Log flagged call (background thread)
         end
     end
-    Phone->>Phone: Apply action within Android's 5s window
+
+    Phone->>Phone: Apply screening response within Android's deadline
+
     Dash->>API: Caregiver clicks Whitelist or Block (POST /resolve)
-    Note over Phone,Dash: Whitelisted numbers always ring.<br/>Blocked numbers are always rejected.
-```
 
----
+    Note over Phone,Dash: Caregiver decisions update the backend's trusted and blocked number lists.
 
-## 🏗️ Architecture
 
-Three decoupled services in one monorepo, connected over an **ngrok** tunnel so a real phone or emulator can reach the laptop-hosted backend.
+Note: The current MVP analyzes call metadata, not live call audio. Android's CallScreeningService provides call information and screening controls, but does not provide direct access to the caller's live audio.
 
-```mermaid
+🏗️ Architecture
+
+KinGuard consists of three decoupled services in one monorepo, connected through an ngrok tunnel so a real phone or emulator can reach the laptop-hosted backend.
+
+mermaid
 flowchart LR
     subgraph EDGE["📱 Android Edge (android-app/)"]
         direction TB
@@ -115,8 +115,9 @@ flowchart LR
         B4["Groq LLM<br/>gpt-oss-20b"]
         B5["Rule-based fallback"]
         B6[("In-memory<br/>flagged queue")]
+
         B1 --> B2 --> B3 --> B4
-        B4 -. "LLM down or timeout" .-> B5
+        B4 -. "LLM error or timeout" .-> B5
         B1 --> B6
     end
 
@@ -130,68 +131,98 @@ flowchart LR
     end
 
     EDGE == "HTTPS via ngrok<br/>POST /evaluate" ==> CORE
-    CORE -- "GET /flagged-calls<br/>(polling)" --> CARE
+    CORE -- "GET /flagged-calls<br/>Polling" --> CARE
     CARE -- "POST /resolve" --> CORE
 
     classDef edge fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
     classDef core fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
     classDef care fill:#fff3e0,stroke:#ef6c00,color:#e65100
+
     class A1,A2 edge
     class B1,B2,B3,B4,B5,B6 core
     class C1,C2,C3 care
-```
 
----
+Components
 
-## 🧭 Decision Logic
+1. Android Application
 
-Every call from an unknown number goes through the same pipeline. Order matters: cheap deterministic checks run first, and the LLM runs last.
+Kotlin-based Android application.
+Uses CallScreeningService to evaluate incoming calls before they ring.
+Uses OkHttp to communicate with the backend.
+Applies the screening decision returned by the API.
 
-```mermaid
+2. Python Backend
+
+Flask API running on port 5001.
+Checks caregiver whitelist and blocklist decisions.
+Maintains a five-minute repeat-caller cache.
+Uses Groq LLM for scam-risk assessment.
+Uses a rule-based fallback when LLM analysis fails.
+Maintains an in-memory queue of flagged calls.
+
+3. Caregiver Dashboard
+
+React + Vite frontend.
+Displays flagged calls and their risk assessments.
+Allows caregivers to whitelist or block numbers.
+Polls the backend for pending flagged calls.
+🧭 Decision Logic
+
+Every unknown incoming call goes through a decision pipeline. Deterministic checks run before the LLM to reduce unnecessary model requests.
+
+mermaid
 flowchart TD
     START(["📞 POST /evaluate"]) --> WL{"Whitelisted<br/>by caregiver?"}
+
     WL -- yes --> ALLOW1["✅ allow"]
     WL -- no --> BL{"Blocked<br/>by caregiver?"}
+
     BL -- yes --> REJECT1["🚫 reject"]
     BL -- no --> REP{"Same number called<br/>within 5 minutes?"}
-    REP -- yes --> ALLOW2["✅ allow<br/>Emergency bypass"]
-    REP -- no --> LLM["⚡ Ask Groq LLM<br/>2s timeout"]
-    LLM -- "success" --> SCORE{"Scam<br/>confidence"}
-    LLM -- "failure or timeout" --> RULES["🛟 Rule-based score"]
+
+    REP -- yes --> PRIORITY["Repeat-caller<br/>prioritization"]
+    REP -- no --> LLM["⚡ Groq LLM<br/>2s timeout"]
+
+    PRIORITY --> LLM
+
+    LLM -- "success" --> SCORE{"Scam risk score"}
+    LLM -- "failure or timeout" --> RULES["🛟 Rule-based fallback"]
+
     RULES --> SCORE2{"Score at or<br/>above 0.5?"}
+
     SCORE2 -- yes --> SILENCE
     SCORE2 -- no --> ALLOW3["✅ allow"]
-    SCORE -- "over 0.90" --> REJECT2["🚫 reject<br/>drop call, hide from log"]
-    SCORE -- "0.50 to 0.90" --> SILENCE["🔕 silence<br/>roll to voicemail"]
-    SCORE -- "under 0.50" --> ALLOW4["✅ allow<br/>rings normally"]
+
+    SCORE -- "over 0.90" --> REJECT2["🚫 reject"]
+    SCORE -- "0.50 to 0.90" --> SILENCE["🔕 silence"]
+    SCORE -- "under 0.50" --> ALLOW4["✅ allow"]
+
     SILENCE --> LOG[("📋 Add to caregiver<br/>flagged queue")]
 
     classDef good fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
     classDef bad fill:#ffebee,stroke:#c62828,color:#b71c1c
     classDef warn fill:#fff8e1,stroke:#f9a825,color:#6d4c00
-    class ALLOW1,ALLOW2,ALLOW3,ALLOW4 good
+
+    class ALLOW1,ALLOW3,ALLOW4 good
     class REJECT1,REJECT2 bad
     class SILENCE,LOG warn
-```
 
-| Confidence | Action | Android behavior |
-|---|---|---|
-| **> 0.90** | `reject` | Call is dropped, skipped from the call log, no notification |
-| **0.50 – 0.90** | `silence` | Ringer suppressed, call rolls to voicemail, caregiver alerted |
-| **< 0.50** | `allow` | Rings normally |
+Risk thresholds
+Risk score	Action	Android behavior
+Above 0.90	reject	Rejects the incoming call
+0.50 – 0.90	silence	Suppresses ringing; call remains subject to normal Android dialer and carrier behavior
+Below 0.50	allow	Allows normal incoming call behavior
 
-**Safety rails**
+Important: The risk score is a model-generated estimate, not a statistically calibrated probability that a call is fraudulent.
 
-- ⏱️ **Fast:** the LLM call has a ~2s timeout. Android must answer within 5s total.
-- 🛟 **Never fails closed on the user:** any LLM error falls back to a rule-based score. `/evaluate` never returns a 500.
-- 🔁 **Emergency bypass:** a hospital or family member who redials within 5 minutes always gets through, while robocallers move on.
-- 👨‍👩‍👧 **Human override:** the caregiver can whitelist a legitimate number (like a doctor) in one click.
-
----
-
-## 📁 Repository Layout
-
-```
+Safety rails
+⏱️ Fast: The LLM request has an approximately two-second timeout. Android call screening has a limited response window, so the overall request must also be bounded.
+🛟 Fallback: If LLM analysis fails or times out, the backend uses a rule-based fallback instead of relying on the model.
+👨‍👩‍👧 Human override: Caregivers can whitelist legitimate numbers, such as doctors or family members.
+🔁 Repeat-caller handling: Repeat calls are treated as an urgency signal, not proof that a caller is trustworthy. They should not independently establish permanent trust.
+⚖️ Risk-based screening: Calls are evaluated using available metadata and risk signals. AI classifications are not guaranteed to be correct.
+📁 Repository Layout
+text
 Call-blocker/
 ├── android-app/        # Kotlin. CallScreeningService + OkHttp client
 ├── python-backend/     # Flask API, Groq integration, tests
@@ -201,58 +232,74 @@ Call-blocker/
 │   └── test_evaluate.py
 ├── react-dashboard/    # React + Vite + Tailwind caregiver UI
 └── README.md
-```
 
----
+🔌 API Reference
 
-## 🔌 API Reference
+Base URL:
 
-Base URL: `http://localhost:5001` locally, or your `https://<id>.ngrok-free.app` tunnel.
+text
+http://localhost:5001
 
-> When calling through a free ngrok tunnel, send the header `ngrok-skip-browser-warning: true` on every request.
 
-### `GET /health`
+Or your ngrok tunnel:
+
+text
+https://<id>.ngrok-free.app
+
+When calling through a free ngrok tunnel, send the header ngrok-skip-browser-warning: true on every request.
+GET /health
 
 Liveness check. Also reports whether the LLM key is loaded.
 
-```json
-{ "status": "ok", "llm_configured": true, "model": "openai/gpt-oss-20b" }
-```
+Example response
 
-### `POST /evaluate`
+json
+{
+  "status": "ok",
+  "llm_configured": true,
+  "model": "openai/gpt-oss-20b"
+}
+
+POST /evaluate
 
 Called by the Android app for each unknown incoming call.
 
-**Request**
-```json
+Request
+
+json
 {
   "caller_id": "+15550198372",
   "verification_status": "FAILED",
   "call_direction": "INCOMING",
   "timestamp": 1761916800
 }
-```
 
-**Response `200`**
-```json
+
+Response 200
+
+json
 {
   "action": "silence",
   "confidence_score": 0.8,
   "reason": "Spoofed number, verification failed"
 }
-```
 
-| `action` | Android call result |
-|---|---|
-| `reject` | `setDisallowCall`, `setRejectCall`, `setSkipCallLog`, `setSkipNotification` |
-| `silence` | `setSilenceCall(true)` |
-| `allow` | Default passthrough, phone rings |
+action	Android call result
+reject	Requests call rejection
+silence	Requests ringtone suppression
+allow	Allows normal incoming call behavior
 
-### `GET /flagged-calls`
+The backend returns a screening recommendation. Actual call behavior depends on Android's telecom framework and device implementation.
 
-Returns calls awaiting caregiver review, newest first. The dashboard polls this every few seconds.
+GET /flagged-calls
 
-```json
+Returns calls awaiting caregiver review, newest first.
+
+The dashboard polls this endpoint periodically.
+
+Example response
+
+json
 [
   {
     "id": 1,
@@ -263,145 +310,211 @@ Returns calls awaiting caregiver review, newest first. The dashboard polls this 
     "timestamp": 1761916800
   }
 ]
-```
 
-`status` is `pending`, `whitelisted`, or `blocked`. Dashboards should show only `pending` items. `confidence_score` is 0 to 1, so multiply by 100 for a percentage.
 
-### `POST /resolve`
+Possible statuses:
+
+pending
+whitelisted
+blocked
+
+Dashboards should display only pending items.
+
+confidence_score ranges from 0 to 1. Multiply by 100 to display a percentage.
+
+POST /resolve
 
 Caregiver decision from the dashboard.
 
-```json
-{ "id": 1, "resolution": "whitelist" }
-```
+Request
 
-`resolution` is `"whitelist"` or `"block"`. Use the backend's integer `id` as-is. Returns `400` for bad input and `404` for an unknown id.
+json
+{
+  "id": 1,
+  "resolution": "whitelist"
+}
 
----
 
-## 🚀 Quick Start
+resolution accepts:
 
-### Prerequisites
+"whitelist"
+"block"
 
-- Python 3.9+
-- Node 18+ and npm (for the dashboard)
-- Android Studio (for the app and emulator)
-- A free [Groq API key](https://console.groq.com)
-- A free [ngrok](https://ngrok.com) account
+Use the backend's integer id as-is.
 
-### 1. Clone
+Returns:
 
-```bash
+200 on success.
+400 for invalid input.
+404 for an unknown ID.
+🚀 Quick Start
+Prerequisites
+Python 3.9+
+Node 18+ and npm (for the dashboard)
+Android Studio (for the app and emulator)
+A free Groq API key
+A free ngrok account
+1. Clone the repository
+bash
 git clone https://github.com/ieatpiYT/Call-blocker.git
 cd Call-blocker
-```
 
-### 2. Backend
-
-```bash
+2. Start the backend
+bash
 cd python-backend
+
 python3 -m venv venv
 source venv/bin/activate
+
 pip install -r requirements.txt
 
 cp .env.example .env
-# open .env and set GROQ_API_KEY=gsk_...   (never commit this file)
 
+
+Open .env and configure your API key:
+
+env
+GROQ_API_KEY=gsk_...
+
+
+Never commit your .env file or expose your API key.
+
+Start Flask:
+
+bash
 python app.py
-```
 
-Check it works: open `http://localhost:5001/health`. You want `"llm_configured": true`.
 
-> **macOS note:** port 5000 is taken by AirPlay Receiver, which is why the backend defaults to **5001**.
+Check that it works:
 
-Quick test:
+text
+http://localhost:5001/health
 
-```bash
+
+You should see:
+
+json
+{
+  "status": "ok",
+  "llm_configured": true,
+  "model": "openai/gpt-oss-20b"
+}
+
+
+macOS note: Port 5000 is commonly used by AirPlay Receiver, which is why the backend defaults to port 5001.
+
+Quick test
+
+bash
 curl -X POST http://localhost:5001/evaluate \
   -H "Content-Type: application/json" \
   -d '{"caller_id":"+15550198372","verification_status":"FAILED","call_direction":"INCOMING","timestamp":1761916800}'
-```
 
-Run the test suite:
 
-```bash
+Run the test suite
+
+bash
 python test_evaluate.py
-```
 
-### 3. Expose the backend with ngrok
+3. Expose the backend with ngrok
 
-In a **separate terminal**:
+Open a separate terminal:
 
-```bash
-ngrok config add-authtoken <your-token>   # one time only
+bash
+ngrok config add-authtoken <your-token>
+
+
+Then:
+
+bash
 ngrok http 5001
-```
 
-Copy the `https://...ngrok-free.app` URL. This is the base URL the Android app and the dashboard use. Free ngrok URLs change every restart, so tell the team when it does.
 
-### 4. Dashboard
+Copy the generated HTTPS URL.
 
-```bash
+For example:
+
+text
+https://example.ngrok-free.app
+
+
+This is the backend base URL used by the Android app and dashboard.
+
+Free ngrok URLs can change after restarting the tunnel, so update the application configuration when necessary.
+
+4. Start the dashboard
+
+Open another terminal:
+
+bash
 cd react-dashboard
+
 npm install
 npm run dev
-```
 
-Point it at your ngrok URL (see the dashboard's API URL setting).
 
-### 5. Android app
+Configure the dashboard to use your ngrok backend URL through its API URL setting.
 
-1. Open `android-app/` in Android Studio.
-2. Set the backend base URL to your ngrok `https` URL.
-3. Run on an emulator, grant the call-screening role when prompted, and simulate calls from the emulator's **Extended Controls → Phone** panel.
+5. Run the Android application
+Open android-app/ in Android Studio.
+Configure the backend base URL using your ngrok HTTPS URL.
+Build and run the application on an emulator or supported Android device.
+Grant the call-screening role when prompted.
+Simulate calls using the emulator's Extended Controls → Phone panel.
+🎬 Live Demo Script
+Part	What we do	What you should see
+1. Call interception	Simulate a call from an unlisted number (555-019-8372) in the emulator	If classified as ambiguous, the phone stays silent and a flagged-call card appears on the caregiver dashboard.
+2. Repeat caller	Call again from the same number within five minutes	Demonstrate the backend's repeat-caller handling. Verify the actual decision returned by the implementation.
+3. Caregiver override	Click Whitelist on the flagged card	The number is added to the trusted list and subsequent calls should follow the whitelist decision.
+4. Block decision	Click Block on a flagged card	The number is added to the blocklist and subsequent calls should follow the block decision.
+5. AI explanation	Show a flagged-call card	Explain the risk score and the reasoning returned by the backend.
+Restart the backend between rehearsals if you want to reset its in-memory state, including the repeat-caller cache and flagged-call queue.
 
----
+Demo tip: Prepare examples of a legitimate unknown caller, an ambiguous caller, and a high-risk caller. This demonstrates that KinGuard is not simply blocking every unfamiliar number.
 
-## 🎬 Live Demo Script
+📊 Project Status
+Component	State
+✅ Flask /evaluate with LLM scoring and rule-based fallback	Done
+✅ 5-minute repeat-caller cache	Done
+✅ /flagged-calls endpoint	Done
+✅ /resolve endpoint	Done
+✅ Automated backend tests	Done
+🚧 Android CallScreeningService + networking	In progress
+🚧 Dashboard wired to live backend (currently mock data)	In progress
+📝 /analyze-audio demo endpoint	Planned
+⚠️ Known Limitations
 
-| Part | What we do | What you should see |
-|---|---|---|
-| **1. Zero-UI intercept** | Simulate a call from an unlisted number (`555-019-8372`) in the emulator | Phone stays silent and dark. A flagged-call card appears on the caregiver dashboard. |
-| **2. Emergency bypass** | Call again from the same number within 5 minutes | The phone rings normally. The repeat-caller bypass fired. |
-| **3. Caregiver override** | Click **Whitelist** on the flagged card | That number now always rings. **Block** would always reject it. |
-| **4. Audio threat engine** *(planned)* | Play a recorded scam clip into the audio endpoint | Dashboard shows the transcript and a critical-threat badge with reasoning. |
+KinGuard is currently a hackathon MVP. The following limitations should be considered:
 
-> Restart the backend between rehearsals. The 5-minute cache would otherwise skip straight to the bypass on a second run.
+Cloud dependency: Scam-risk analysis currently uses a cloud-hosted Groq LLM. Fully on-device inference is a future goal.
+Network dependency: Cloud-assisted screening requires backend connectivity. The backend has a rule-based fallback for LLM failures, but this does not eliminate network failure scenarios.
+Model accuracy: AI-generated risk scores are estimates. False positives and false negatives are possible.
+Android restrictions: Actual call-screening behavior depends on Android's telecom framework, the default dialer, device manufacturer, and carrier.
+Call audio: The current implementation evaluates call metadata, not live caller audio.
+Data persistence: The backend currently uses in-memory storage. Flagged calls, whitelist entries, blocklist entries, and cache state may be lost when the backend restarts.
+Caregiver security: Production deployment requires authenticated caregiver accounts and access controls to protect call information and prevent unauthorized number-resolution actions.
+Call-log behavior: Android restricts some call-log and notification controls. KinGuard does not guarantee that rejected calls will be completely hidden from system call history.
 
----
+KinGuard is intended as an assistive fraud-prevention tool, not a guarantee that fraudulent calls will always be detected or blocked.
 
-## 📊 Project Status
+🗺️ Roadmap
 
-| Component | State |
-|---|---|
-| ✅ Flask `/evaluate` with LLM scoring and rule-based fallback | Done |
-| ✅ 5-minute emergency bypass | Done |
-| ✅ `/flagged-calls` and `/resolve` | Done |
-| ✅ Automated tests for the backend | Done |
-| 🚧 Android `CallScreeningService` + networking | In progress |
-| 🚧 Dashboard wired to live backend (currently mock data) | In progress |
-| 📝 `/analyze-audio` demo endpoint (transcript + threat badge) | Planned |
+The current hackathon MVP uses cloud-assisted metadata analysis. The long-term production vision is to move inference onto the device to reduce network dependency and minimize the transmission of sensitive call information.
 
----
-
-## 🗺️ Roadmap
-
-The hackathon MVP sends call metadata to a cloud LLM. The production design moves all inference onto the phone so no call data leaves the device.
-
-```mermaid
+mermaid
 flowchart LR
     subgraph MVP["🏁 Hackathon MVP"]
         direction TB
-        M1["CallScreeningService<br/>pre-ring metadata check"]
-        M2["Flask + Groq LLM<br/>over HTTPS tunnel"]
-        M3["In-memory queue<br/>polled dashboard"]
+        M1["CallScreeningService<br/>Pre-ring metadata screening"]
+        M2["Flask + Groq LLM<br/>HTTPS backend"]
+        M3["In-memory queue<br/>Polled caregiver dashboard"]
     end
 
-    subgraph PROD["🏢 Production"]
+    subgraph PROD["🏢 Production Vision"]
         direction TB
-        P1["Two-stage pipeline<br/>CallScreeningService + InCallService<br/>live audio analysis"]
-        P2["100% on-device edge AI<br/>LiteRT on Android, CoreML on iOS"]
-        P3["Zero-retention encrypted broker<br/>caregiver alerts + model updates"]
+        P1["Call screening<br/>+ supported audio analysis"]
+        P2["On-device edge AI<br/>LiteRT on Android"]
+        P3["Secure caregiver service<br/>Encrypted alerts + model updates"]
     end
 
     M1 ==> P1
@@ -410,32 +523,50 @@ flowchart LR
 
     classDef mvp fill:#fff3e0,stroke:#ef6c00,color:#e65100
     classDef prod fill:#e8eaf6,stroke:#3949ab,color:#1a237e
+
     class M1,M2,M3 mvp
     class P1,P2,P3 prod
-```
 
-Planned next steps:
+Planned next steps
+Persistent storage using SQLite or another database.
+Authenticated caregiver accounts and per-user authorization.
+Improved contact and trusted-number handling.
+More comprehensive testing of false positives and false negatives.
+Voicemail and live-audio analysis feasibility research.
+On-device scam classification models for Android.
+iOS support, subject to platform capabilities and restrictions.
+Institutional trusted-number database for pharmacies, healthcare providers, and banks.
+Secure data retention and deletion controls.
+🔐 Privacy and Security Considerations
 
-- [ ] Voicemail and live-audio analysis (transcription plus fraud scoring)
-- [ ] Contact passthrough: calls from saved contacts bypass screening entirely
-- [ ] Institutional whitelist for pharmacies, healthcare, and banks
-- [ ] On-device models for Android and iOS
-- [ ] Persistent storage and caregiver accounts instead of in-memory state
+KinGuard processes telephone metadata to assess potential scam risk.
 
----
+The current MVP sends call metadata, including caller information and verification status, to the Flask backend for evaluation. The backend may send relevant assessment information to the configured Groq model.
 
-## 👥 Team
+The current MVP is therefore not fully on-device and should not be described as a zero-data-transmission system.
 
-| Name | Owns |
-|---|---|
-| **Luke** | `android-app/`, the call-screening service and network client |
-| **Eric** | `python-backend/`, the decision engine, LLM integration, and integration glue |
-| **Mukunth** | `react-dashboard/`, the caregiver Mission Control UI |
+Before production deployment, KinGuard needs:
 
----
+Secure caregiver authentication.
+Authorization checks for flagged-call access and number resolution.
+Encrypted communication between services.
+Appropriate retention and deletion policies.
+Protection of phone numbers and other personal information.
+Secure API key management.
+Clear consent and privacy disclosures for protected users and caregivers.
+
+The production goal is to minimize the amount of sensitive information transmitted or retained.
+
+👥 Team
+Name	Responsibility
+Luke	android-app/ — Android call-screening service and network client
+Eric	python-backend/ — Flask decision engine, LLM integration, and integration glue
+Mukunth	react-dashboard/ — React caregiver Mission Control dashboard
 
 <div align="center">
 
-**Built at a hackathon. Protecting the people who are hardest to protect.**
+Built at a hackathon. Protecting the people who are hardest to protect.
+
+KinGuard — Security decisions delegated to the people who care.
 
 </div>
