@@ -5,7 +5,7 @@ If GROQ_API_KEY is set, one extra test hits the real Groq API.
 """
 
 import time
-
+import importlib
 import app as backend
 
 client = backend.app.test_client()
@@ -16,16 +16,24 @@ def check(name, cond, detail=""):
     global passed
     if not cond:
         raise AssertionError(f"FAIL: {name} {detail}")
+    
     passed += 1
     print(f"  PASS  {name}")
 
 
 def evaluate(caller_id, verification="PASSED", **extra):
-    body = {"caller_id": caller_id, "verification_status": verification,
-            "call_direction": "INCOMING", "timestamp": int(time.time()), **extra}
+    body = {
+        "caller_id": caller_id,
+        "verification_status": verification,
+        "call_direction": "INCOMING",
+        "timestamp": int(time.time()),
+        **extra
+    }
+    
     start = time.time()
     r = client.post("/evaluate", json=body)
     elapsed = time.time() - start
+    
     print(f"        {caller_id or '<none>'} {verification} -> {r.status_code} {r.get_json()} ({elapsed:.2f}s)")
     return r, elapsed
 
@@ -44,9 +52,11 @@ def mock_llm(confidence, reason="mocked"):
 def wait_for_flag(caller_id, timeout=1.0):
     end = time.time() + timeout
     while time.time() < end:
-        if any(c["caller_id"] == caller_id for c in client.get("/flagged-calls").get_json()):
+        flagged = client.get("/flagged-calls").get_json()
+        if any(c["caller_id"] == caller_id for c in flagged):
             return True
         time.sleep(0.02)
+        
     return False
 
 
@@ -120,8 +130,13 @@ check("unparseable output -> fallback (allow, clean number)",
       r.get_json()["action"] == "allow" and r.get_json()["reason"].startswith("Fallback"))
 
 print("\n9. Malformed requests never 500")
-for name, kwargs in [("empty body", {}), ("not JSON", {"data": "hello"}),
-                     ("wrong types", {"json": {"caller_id": 123, "timestamp": "soon"}})]:
+malformed_payloads = [
+    ("empty body", {}), 
+    ("not JSON", {"data": "hello"}),
+    ("wrong types", {"json": {"caller_id": 123, "timestamp": "soon"}})
+]
+
+for name, kwargs in malformed_payloads:
     r = client.post("/evaluate", **kwargs)
     check(f"{name} -> 200 with action", r.status_code == 200 and "action" in r.get_json(), r.get_json())
 
@@ -130,8 +145,7 @@ r = client.get("/flagged-calls")
 flagged = r.get_json()
 print(f"        {flagged}")
 check("flagged list is newest first", [c["id"] for c in flagged] == sorted((c["id"] for c in flagged), reverse=True))
-check("events have dashboard fields",
-      all(set(c) == {"id", "caller_id", "confidence_score", "reason", "timestamp", "status"} for c in flagged))
+check("events have dashboard fields", all(set(c) == {"id", "caller_id", "confidence_score", "reason", "timestamp", "status"} for c in flagged))
 check("new events are pending", all(c["status"] == "pending" for c in flagged))
 
 target = next(c for c in flagged if c["caller_id"] == "+15550198372")
@@ -154,8 +168,6 @@ check("resolve unknown id -> 404", client.post("/resolve", json={"id": 9999, "re
 
 if backend.GROQ_API_KEY:
     print("\n11. Live Groq call")
-    import importlib
-
     importlib.reload(backend)
     client = backend.app.test_client()
     r, elapsed = evaluate("+15559876543", "FAILED")
