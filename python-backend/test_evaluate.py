@@ -1,182 +1,199 @@
-"""Tests for the KinGuard backend. Run: ./venv/bin/python test_evaluate.py
+"""Tests for the KinGuard backend.
 
-Uses Flask's test client, so no server is needed. The LLM is mocked so routing is deterministic.
+Run: ./venv/bin/python test_evaluate.py
+Uses Flask's test client, so no server is needed.
+The LLM is mocked so routing is deterministic.
 If GROQ_API_KEY is set, one extra test hits the real Groq API.
 """
 
-import time
 import importlib
+import time
+import unittest
+from unittest.mock import patch
+
 import app as backend
 
-client = backend.app.test_client()
-passed = 0
+
+class TestKinGuardBackend(unittest.TestCase):
+    def setUp(self):
+        self.client = backend.app.test_client()
+        # Reset in-memory state between tests so tests don't leak into each other
+        with backend._lock:
+            backend.last_flagged_at.clear()
+            if hasattr(backend, "flagged_calls"):
+                backend.flagged_calls.clear()
+            if hasattr(backend, "whitelisted_numbers"):
+                backend.whitelisted_numbers.clear()
+            if hasattr(backend, "blocked_numbers"):
+                backend.blocked_numbers.clear()
+
+    def evaluate(self, caller_id, verification="PASSED", **extra):
+        body = {
+            "caller_id": caller_id,
+            "verification_status": verification,
+            "call_direction": "INCOMING",
+            "timestamp": int(time.time()),
+            **extra,
+        }
+        start = time.perf_counter()
+        response = self.client.post("/evaluate", json=body)
+        elapsed = time.perf_counter() - start
+        return response, elapsed
+
+    def wait_for_flag(self, caller_id, timeout=1.0):
+        deadline = time.perf_counter() + timeout
+        while time.perf_counter() < deadline:
+            flagged = self.client.get("/flagged-calls").get_json()
+            if any(c["caller_id"] == caller_id for c in flagged):
+                return True
+            time.sleep(0.02)
+        return False
+
+    def test_01_health_check(self):
+        r = self.client.get("/health")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.get_json().get("status"), "ok")
+
+    @patch.object(backend, "llm_score", return_value=(0.12, "Verified domestic number"))
+    def test_02_normal_call_allowed(self, _mock_llm):
+        r, _ = self.evaluate("+14155550123", "PASSED")
+        data = r.get_json()
+        self.assertEqual(data["action"], "allow")
+        self.assertEqual(set(data.keys()), {"action", "confidence_score", "reason"})
+
+    @patch.object(backend, "llm_score", return_value=(0.78, "Caller ID verification failed"))
+    def test_03_failed_verification_silenced_and_flagged(self, _mock_llm):
+        r, _ = self.evaluate("+15550198372", "FAILED")
+        self.assertEqual(r.get_json()["action"], "silence")
+        self.assertTrue(self.wait_for_flag("+15550198372"))
+
+    @patch.object(backend, "llm_score", return_value=(0.78, "Caller ID verification failed"))
+    def test_04_repeat_caller_within_5_min_bypass(self, mock_llm):
+        # First call triggers flag
+        self.evaluate("+15550198372", "FAILED")
+        mock_llm.reset_mock()
+
+        # Second call within 5 minutes bypasses LLM
+        r, _ = self.evaluate("+15550198372", "FAILED")
+        data = r.get_json()
+        self.assertEqual(data["action"], "allow")
+        self.assertEqual(data["reason"], "Repeat caller within 5 min (emergency bypass)")
+        mock_llm.assert_not_called()
+
+    @patch.object(backend, "llm_score", return_value=(0.95, "Spoofed number, high risk"))
+    def test_05_high_confidence_scam_rejected_and_bypass_expires(self, _mock_llm):
+        r, _ = self.evaluate("+18005550000", "FAILED")
+        self.assertEqual(r.get_json()["action"], "reject")
+
+        # Expire the 5-minute bypass window
+        with backend._lock:
+            backend.last_flagged_at["+18005550000"] -= 301
+
+        r, _ = self.evaluate("+18005550000", "FAILED")
+        self.assertEqual(r.get_json()["action"], "reject")
+
+    @patch.object(backend, "llm_score", side_effect=ConnectionError("groq unreachable"))
+    def test_06_llm_down_triggers_rule_fallback(self, _mock_llm):
+        # High-risk fallback -> silence & log
+        r, _ = self.evaluate("+12025550111", "FAILED")
+        data = r.get_json()
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(data["action"], "silence")
+        self.assertTrue(data["reason"].startswith("Fallback"))
+        self.assertTrue(self.wait_for_flag("+12025550111"))
+
+        # Low-risk fallback -> allow & do not log
+        r, _ = self.evaluate("+14155550177", "PASSED")
+        data = r.get_json()
+        self.assertEqual(data["action"], "allow")
+        self.assertTrue(data["reason"].startswith("Fallback"))
+        self.assertFalse(self.wait_for_flag("+14155550177", timeout=0.3))
+
+    def test_07_llm_hang_respects_timeout(self):
+        def slow_groq(*_args):
+            time.sleep(backend.LLM_TIMEOUT_S + 1)
+
+        with patch.object(backend, "_call_groq", side_effect=slow_groq):
+            r, elapsed = self.evaluate("+13125550199", "FAILED")
+            data = r.get_json()
+            self.assertEqual(data["action"], "silence")
+            self.assertIn("timeout", data["reason"])
+            self.assertLess(elapsed, 5.0)
+
+    def test_08_llm_garbage_output_triggers_fallback(self):
+        with patch.object(backend, "_call_groq", return_value="not valid json"):
+            r, _ = self.evaluate("+13125550200", "PASSED")
+            data = r.get_json()
+            self.assertEqual(data["action"], "allow")
+            self.assertTrue(data["reason"].startswith("Fallback"))
+
+    def test_09_malformed_requests_never_500(self):
+        payloads = [
+            ("empty body", {}),
+            ("not JSON", {"data": "hello"}),
+            ("wrong types", {"json": {"caller_id": 123, "timestamp": "soon"}}),
+        ]
+        for label, kwargs in payloads:
+            with self.subTest(payload=label):
+                r = self.client.post("/evaluate", **kwargs)
+                self.assertEqual(r.status_code, 200)
+                self.assertIn("action", r.get_json())
+
+    def test_10_flagged_calls_and_resolve_workflow(self):
+        with patch.object(backend, "llm_score", return_value=(0.78, "Suspicious")):
+            self.evaluate("+15550198372", "FAILED")
+            self.evaluate("+12025550111", "FAILED")
+            self.assertTrue(self.wait_for_flag("+12025550111"))
+
+        flagged = self.client.get("/flagged-calls").get_json()
+        ids = [c["id"] for c in flagged]
+        self.assertEqual(ids, sorted(ids, reverse=True))
+
+        expected_keys = {"id", "caller_id", "confidence_score", "reason", "timestamp", "status"}
+        for call in flagged:
+            self.assertEqual(set(call.keys()), expected_keys)
+            self.assertEqual(call["status"], "pending")
+
+        # Test Whitelisting
+        target_whitelist = next(c for c in flagged if c["caller_id"] == "+15550198372")
+        r = self.client.post("/resolve", json={"id": target_whitelist["id"], "resolution": "whitelist"})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.get_json()["call"]["status"], "whitelisted")
+
+        with patch.object(backend, "llm_score", return_value=(0.99, "Scam")):
+            r, _ = self.evaluate("+15550198372", "FAILED")
+            self.assertEqual(r.get_json()["action"], "allow")
+
+        # Test Blocking
+        target_block = next(c for c in flagged if c["caller_id"] == "+12025550111")
+        r = self.client.post("/resolve", json={"id": target_block["id"], "resolution": "block"})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.get_json()["call"]["status"], "blocked")
+
+        with patch.object(backend, "llm_score", return_value=(0.01, "Safe")):
+            r, _ = self.evaluate("+12025550111", "PASSED")
+            self.assertEqual(r.get_json()["action"], "reject")
+
+        # Test Error Codes
+        self.assertEqual(
+            self.client.post("/resolve", json={"id": 1, "resolution": "maybe"}).status_code,
+            400,
+        )
+        self.assertEqual(
+            self.client.post("/resolve", json={"id": 9999, "resolution": "block"}).status_code,
+            404,
+        )
+
+    @unittest.skipUnless(backend.GROQ_API_KEY, "GROQ_API_KEY not set in .env")
+    def test_11_live_groq_integration(self):
+        importlib.reload(backend)
+        self.client = backend.app.test_client()
+        r, elapsed = self.evaluate("+15559876543", "FAILED")
+        data = r.get_json()
+        self.assertIn(data["action"], ("allow", "silence", "reject"))
+        self.assertLess(elapsed, 5.0)
+        self.assertFalse(data["reason"].startswith("Fallback"), data["reason"])
 
 
-def check(name, cond, detail=""):
-    global passed
-    if not cond:
-        raise AssertionError(f"FAIL: {name} {detail}")
-    
-    passed += 1
-    print(f"  PASS  {name}")
-
-
-def evaluate(caller_id, verification="PASSED", **extra):
-    body = {
-        "caller_id": caller_id,
-        "verification_status": verification,
-        "call_direction": "INCOMING",
-        "timestamp": int(time.time()),
-        **extra
-    }
-    
-    start = time.time()
-    r = client.post("/evaluate", json=body)
-    elapsed = time.time() - start
-    
-    print(f"        {caller_id or '<none>'} {verification} -> {r.status_code} {r.get_json()} ({elapsed:.2f}s)")
-    return r, elapsed
-
-
-def mock_llm(confidence, reason="mocked"):
-    calls = []
-
-    def fake(*args):
-        calls.append(args)
-        return confidence, reason
-
-    backend.llm_score = fake
-    return calls
-
-
-def wait_for_flag(caller_id, timeout=1.0):
-    end = time.time() + timeout
-    while time.time() < end:
-        flagged = client.get("/flagged-calls").get_json()
-        if any(c["caller_id"] == caller_id for c in flagged):
-            return True
-        time.sleep(0.02)
-        
-    return False
-
-
-real_llm_score = backend.llm_score
-
-print("\n/health")
-r = client.get("/health")
-check("health returns ok", r.status_code == 200 and r.get_json()["status"] == "ok", r.get_json())
-
-print("\n1. Normal call (verified, LLM says low risk)")
-mock_llm(0.12, "Verified domestic number")
-r, _ = evaluate("+14155550123", "PASSED")
-check("normal call -> allow", r.get_json()["action"] == "allow")
-check("response has contract keys", set(r.get_json()) == {"action", "confidence_score", "reason"})
-
-print("\n2. FAILED verification (LLM says medium risk)")
-mock_llm(0.78, "Caller ID verification failed")
-r, _ = evaluate("+15550198372", "FAILED")
-check("FAILED call -> silence", r.get_json()["action"] == "silence")
-check("silenced call appears in /flagged-calls", wait_for_flag("+15550198372"))
-
-print("\n3. Same number calls again within 5 min")
-calls = mock_llm(0.78)
-r, _ = evaluate("+15550198372", "FAILED")
-check("repeat caller -> allow", r.get_json()["action"] == "allow")
-check("bypass reason", r.get_json()["reason"] == "Repeat caller within 5 min (emergency bypass)")
-check("LLM not called on bypass", len(calls) == 0)
-
-print("\n4. High-confidence scam")
-mock_llm(0.95, "Spoofed number, high risk")
-r, _ = evaluate("+18005550000", "FAILED")
-check("confidence > 0.90 -> reject", r.get_json()["action"] == "reject")
-
-print("\n5. Bypass window expires")
-with backend._lock:
-    backend.last_flagged_at["+18005550000"] -= 301
-mock_llm(0.95)
-r, _ = evaluate("+18005550000", "FAILED")
-check("after 5 min, no bypass -> reject", r.get_json()["action"] == "reject")
-
-print("\n6. LLM down -> rule-based fallback")
-
-
-def broken(*args):
-    raise ConnectionError("groq unreachable")
-
-
-backend.llm_score = broken
-r, _ = evaluate("+12025550111", "FAILED")
-body = r.get_json()
-check("LLM error -> 200 silence", r.status_code == 200 and body["action"] == "silence")
-check("reason notes fallback", body["reason"].startswith("Fallback"), body["reason"])
-check("fallback call still logged", wait_for_flag("+12025550111"))
-
-r, _ = evaluate("+14155550177", "PASSED")
-body = r.get_json()
-check("LLM error + clean rule score (<0.5) -> allow", body["action"] == "allow" and body["reason"].startswith("Fallback"))
-check("allowed fallback call NOT logged", not wait_for_flag("+14155550177", timeout=0.3))
-
-print("\n7. LLM hangs -> real timeout path stays under 5s")
-backend.llm_score = real_llm_score
-backend._call_groq = lambda *a: time.sleep(backend.LLM_TIMEOUT_S + 1)
-r, elapsed = evaluate("+13125550199", "FAILED")
-check("hung LLM -> silence fallback", r.get_json()["action"] == "silence" and "timeout" in r.get_json()["reason"])
-check("responded in under 5s", elapsed < 5, f"{elapsed:.2f}s")
-
-print("\n8. LLM returns garbage")
-backend._call_groq = lambda *a: float("not json")
-r, _ = evaluate("+13125550200", "PASSED")
-check("unparseable output -> fallback (allow, clean number)",
-      r.get_json()["action"] == "allow" and r.get_json()["reason"].startswith("Fallback"))
-
-print("\n9. Malformed requests never 500")
-malformed_payloads = [
-    ("empty body", {}), 
-    ("not JSON", {"data": "hello"}),
-    ("wrong types", {"json": {"caller_id": 123, "timestamp": "soon"}})
-]
-
-for name, kwargs in malformed_payloads:
-    r = client.post("/evaluate", **kwargs)
-    check(f"{name} -> 200 with action", r.status_code == 200 and "action" in r.get_json(), r.get_json())
-
-print("\n10. /flagged-calls and /resolve")
-r = client.get("/flagged-calls")
-flagged = r.get_json()
-print(f"        {flagged}")
-check("flagged list is newest first", [c["id"] for c in flagged] == sorted((c["id"] for c in flagged), reverse=True))
-check("events have dashboard fields", all(set(c) == {"id", "caller_id", "confidence_score", "reason", "timestamp", "status"} for c in flagged))
-check("new events are pending", all(c["status"] == "pending" for c in flagged))
-
-target = next(c for c in flagged if c["caller_id"] == "+15550198372")
-r = client.post("/resolve", json={"id": target["id"], "resolution": "whitelist"})
-print(f"        {r.get_json()}")
-check("resolve whitelist ok", r.status_code == 200 and r.get_json()["call"]["status"] == "whitelisted")
-mock_llm(0.99)
-r, _ = evaluate("+15550198372", "FAILED")
-check("whitelisted number -> allow even at 0.99", r.get_json()["action"] == "allow")
-
-target = next(c for c in flagged if c["caller_id"] == "+12025550111")
-r = client.post("/resolve", json={"id": target["id"], "resolution": "block"})
-check("resolve block ok", r.status_code == 200 and r.get_json()["call"]["status"] == "blocked")
-mock_llm(0.01)
-r, _ = evaluate("+12025550111", "PASSED")
-check("blocked number -> reject even at 0.01 (and beats bypass)", r.get_json()["action"] == "reject")
-
-check("resolve bad resolution -> 400", client.post("/resolve", json={"id": 1, "resolution": "maybe"}).status_code == 400)
-check("resolve unknown id -> 404", client.post("/resolve", json={"id": 9999, "resolution": "block"}).status_code == 404)
-
-if backend.GROQ_API_KEY:
-    print("\n11. Live Groq call")
-    importlib.reload(backend)
-    client = backend.app.test_client()
-    r, elapsed = evaluate("+15559876543", "FAILED")
-    body = r.get_json()
-    print(f"        reason: {body['reason']}")
-    check("live call returns valid action", body["action"] in ("allow", "silence", "reject"))
-    check("live call under 5s", elapsed < 5, f"{elapsed:.2f}s")
-    check("live call used LLM (not fallback)", not body["reason"].startswith("Fallback"), body["reason"])
-else:
-    print("\n(Skipping live Groq test: GROQ_API_KEY not set in .env)")
-
-print(f"\nAll {passed} checks passed.")
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
